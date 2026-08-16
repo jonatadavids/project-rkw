@@ -1,0 +1,21 @@
+{
+  "name": "RKW.Core.EditMode.Tests",
+  "rootNamespace": "RKW.Core.Tests.EditMode",
+  "references": [
+    "RKW.Core"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

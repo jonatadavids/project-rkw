@@ -1,0 +1,60 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+.utmp/
+
+# IDE and generated project files
+.vs/
+.vscode/
+.idea/
+ExportedObj/
+*.csproj
+*.sln
+*.slnx
+*.unityproj
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity crash and build artifacts
+sysinfo.txt
+crashlytics-build.properties
+*.log
+*.apk
+*.aab
+*.ipa
+
+# Local secrets, signing material, and provisioning files
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.cer
+*.crt
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+
+# Local review archives
+/revisao-m0.zip
+
+# OS files
+.DS_Store
+Thumbs.db
