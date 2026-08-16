@@ -1,0 +1,21 @@
+{
+  "name": "RKW.Network.EditMode.Tests",
+  "rootNamespace": "RKW.Network.Tests.EditMode",
+  "references": [
+    "RKW.Network"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

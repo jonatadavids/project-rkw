@@ -279,16 +279,16 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: FsCheck pode ter conflito com IL2CPP; testar em build se necessário_
 
-- [ ] M1-T04 Integrar Photon Fusion 2 SDK
-  - Adicionar Photon Fusion 2 via Package Manager (ADR-0002 aprovado)
+- [x] M1-T04 Integrar Photon Fusion 2 SDK
+  - Adicionar Photon Fusion 2 pelo pacote oficial versionado (ADR-0002 aprovado)
   - Configurar App ID no Photon Dashboard (usar App ID de desenvolvimento)
   - Criar script de conexão básica (ConnectToPhoton → log sucesso/falha)
   - Não implementar gameplay networking ainda
   - _Requirements: R9.1_
   - _Dependências: M1-T01_
   - _Critério de conclusão: Log "Connected to Photon" no console_
-  - _Testes: EditMode test mock connection_
-  - _Evidência: Console log de conexão bem-sucedida_
+  - _Testes: EditMode mock + PlayMode local para conexão real, timeout, cancelamento e repetição sem runner órfão_
+  - _Evidência: `Connected to Photon` em duas conexões Shared Mode; EditMode 8/8 e PlayMode 4/4_
   - _Validação humana: não_
   - _Ambiente: Unity Editor + internet_
   - _Risco: Médio — SDK pode ter breaking changes; pin version_
