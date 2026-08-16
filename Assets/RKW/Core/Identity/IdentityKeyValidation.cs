@@ -11,6 +11,19 @@ namespace RKW.Core.Identity
                 throw new ArgumentException("A required identity ID cannot be null, empty, or whitespace.", parameterName);
             }
 
+            if (char.IsWhiteSpace(value[0]) || char.IsWhiteSpace(value[value.Length - 1]))
+            {
+                throw new ArgumentException("A required identity ID cannot start or end with whitespace.", parameterName);
+            }
+
+            for (var index = 0; index < value.Length; index++)
+            {
+                if (char.IsControl(value[index]))
+                {
+                    throw new ArgumentException("A required identity ID cannot contain control characters.", parameterName);
+                }
+            }
+
             return value;
         }
 

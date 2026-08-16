@@ -3,9 +3,15 @@ using System;
 namespace RKW.Core.Identity
 {
     /// <summary>
-    /// Identifies the complete set of dimensions used to compare competitive times.
+    /// Immutable domain value object that identifies every dimension used to compare competitive times.
     /// Direction belongs to TrackConfigurationId and is intentionally not duplicated.
     /// </summary>
+    /// <remarks>
+    /// Do not serialize this domain object directly with Unity JsonUtility. Transport or persistence DTOs
+    /// will be introduced with their first real consumer. Their persistent format must encode enums by
+    /// stable names rather than ordinal values and must pass a round-trip test before Cloud Save or Cloud
+    /// Code integration.
+    /// </remarks>
     public sealed class LeaderboardKey : IEquatable<LeaderboardKey>
     {
         public LeaderboardKey(

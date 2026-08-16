@@ -31,6 +31,14 @@ Somente assemblies com consumidor neste bloco foram criadas:
 
 `RKW.Physics`, `RKW.Controls` e demais assemblies não foram antecipadas. Serão adicionadas no milestone/tarefa em que o primeiro consumidor real aparecer, seguindo a lista incremental de M1-T02. `RKW.Editor` só será criada quando houver uma ferramenta de editor persistente.
 
+## Contratos de identidade do domínio
+
+`LeaderboardKey` e `SessionContextKey` são objetos de domínio imutáveis. Seus IDs preservam exatamente o texto validado e usam comparação ordinal case-sensitive; não há normalização silenciosa com `Trim()` nem imposição de lowercase.
+
+Esses objetos não devem ser serializados diretamente com `UnityEngine.JsonUtility`. Não serão adicionados `[Serializable]`, setters, construtores vazios ou campos públicos apenas para satisfazer o serializer do Unity. DTOs próprios de transporte e persistência serão criados quando Cloud Save, Cloud Code ou outro consumidor real for implementado.
+
+O formato persistente deverá representar enums por nomes estáveis, sem depender de seus valores ordinais. Antes de qualquer integração com Cloud Save ou Cloud Code, o DTO e seu serializer deverão ter teste obrigatório de round-trip (`deserialize(serialize(value)) == value`).
+
 ## Framework de testes e avaliação do FsCheck
 
 O projeto usa Unity Test Framework `1.6.0`, com NUnit fornecido pela extensão oficial `com.unity.ext.nunit@2.0.5`. EditMode e PlayMode têm um teste mínimo cada.

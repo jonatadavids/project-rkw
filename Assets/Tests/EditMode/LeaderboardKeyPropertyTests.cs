@@ -50,6 +50,11 @@ namespace RKW.Core.Tests.EditMode
             Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: null));
             Assert.Throws<ArgumentException>(() => Create(kartCategoryId: string.Empty));
             Assert.Throws<ArgumentException>(() => Create(trackConditionId: "   "));
+            Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: " track-config"));
+            Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: "track-config "));
+            Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: "track\tconfig"));
+            Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: "track\nconfig"));
+            Assert.Throws<ArgumentException>(() => Create(trackConfigurationId: "track\0config"));
             Assert.Throws<ArgumentException>(() => Create(environmentPresetId: null));
             Assert.Throws<ArgumentOutOfRangeException>(() => Create(gameMode: (GameMode)int.MaxValue));
             Assert.Throws<ArgumentOutOfRangeException>(() => Create(physicsVersion: 0));
@@ -67,6 +72,44 @@ namespace RKW.Core.Tests.EditMode
                 1,
                 1,
                 AssistClass.Standardized));
+        }
+
+        [Test]
+        public void LeaderboardKey_NullEquality_IsConsistent()
+        {
+            LeaderboardKey firstNull = null;
+            LeaderboardKey secondNull = null;
+            var value = Create();
+
+            Assert.That(firstNull == secondNull, Is.True);
+            Assert.That(value == null, Is.False);
+            Assert.That(null == value, Is.False);
+            Assert.That(value != null, Is.True);
+            Assert.That(value.Equals((LeaderboardKey)null), Is.False);
+        }
+
+        [Test]
+        public void LeaderboardKey_IdsRemainCaseSensitiveAndUnmodified()
+        {
+            var mixedCase = Create(trackConfigurationId: "Track-Config");
+            var lowerCase = Create(trackConfigurationId: "track-config");
+
+            Assert.That(mixedCase.TrackConfigurationId, Is.EqualTo("Track-Config"));
+            Assert.That(mixedCase, Is.Not.EqualTo(lowerCase));
+        }
+
+        [Test]
+        public void SessionContextKey_NullEquality_IsConsistent()
+        {
+            SessionContextKey firstNull = null;
+            SessionContextKey secondNull = null;
+            var value = CreateSession("track-a");
+
+            Assert.That(firstNull == secondNull, Is.True);
+            Assert.That(value == null, Is.False);
+            Assert.That(null == value, Is.False);
+            Assert.That(value != null, Is.True);
+            Assert.That(value.Equals((SessionContextKey)null), Is.False);
         }
 
         [Test]

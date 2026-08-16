@@ -3,9 +3,16 @@ using System;
 namespace RKW.Core.Identity
 {
     /// <summary>
-    /// Identifies the complete competitive context of a session. Additional telemetry belongs to
-    /// telemetry records until a concrete identity dimension has an approved consumer.
+    /// Immutable domain value object that identifies the complete competitive context of a session.
+    /// Additional telemetry belongs to telemetry records until a concrete identity dimension has an
+    /// approved consumer.
     /// </summary>
+    /// <remarks>
+    /// Do not serialize this domain object directly with Unity JsonUtility. Transport or persistence DTOs
+    /// will be introduced with their first real consumer. Their persistent format must encode enums by
+    /// stable names rather than ordinal values and must pass a round-trip test before Cloud Save or Cloud
+    /// Code integration.
+    /// </remarks>
     public sealed class SessionContextKey : IEquatable<SessionContextKey>
     {
         private readonly LeaderboardKey leaderboardKey;
