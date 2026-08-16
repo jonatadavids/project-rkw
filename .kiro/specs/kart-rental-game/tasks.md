@@ -346,12 +346,12 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Build Automation cloud_
   - _Risco: Médio — iOS signing adiado não bloqueia dev; requer conta Apple antes de TestFlight/iPhone test_
 
-- [ ] M1-T08 Criar tipos core em RKW.Core
-  - Definir enums: GameMode, TrackDirection, AssistClass, KartCategory, RankingWindow
-  - Definir interfaces: INetworkTransport, ICloudPersistence
-  - Definir structs: SessionContextKey, LeaderboardKey (com IEquatable, GetHashCode)
-  - Definir constantes: FIXED_TIMESTEP, MAX_PARTICIPANTS, QUALIFYING_ATTEMPTS
-  - _Requirements: R19.1, R19.2, R9 (abstraction layer)_
+- [x] M1-T08 Criar tipos core em RKW.Core
+  - Definir somente os enums consumidos neste bloco: GameMode e AssistClass
+  - Definir SessionContextKey e LeaderboardKey imutáveis (com IEquatable, igualdade ordinal e GetHashCode apenas para coleções em memória)
+  - Direction permanece propriedade canônica de TrackConfigurationId, sem campo duplicado
+  - Adiar interfaces, constantes e ID persistente/canônico até existir consumidor
+  - _Requirements: R19.1, R19.2_
   - _Dependências: M1-T02_
   - _Critério de conclusão: Types compilam, são referenciáveis por outros assemblies_
   - _Testes: EditMode test verifying LeaderboardKey equality_
@@ -360,11 +360,11 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M1-T09 Property test: LeaderboardKey strict equality (Property 28)
+- [x] M1-T09 Property test: LeaderboardKey strict equality (Property 28)
   - **Property 28: LeaderboardKey Strict Equality**
   - Para quaisquer dois LeaderboardKey, igualdade sse TODOS os campos idênticos
   - Mudar qualquer campo único deve produzir desigualdade
-  - Gerador determinístico NUnit gera LeaderboardKeys aleatórios e verifica propriedade
+  - Gerador determinístico NUnit com seed fixa/configurável gera LeaderboardKeys e verifica reflexividade, simetria, transitividade e alteração individual de cada campo
   - **Validates: Requirements 19.2, 19.5**
   - _Dependências: M1-T08_
   - _Critério de conclusão: 100+ iterações passam_
