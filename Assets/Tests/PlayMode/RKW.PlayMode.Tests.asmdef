@@ -2,7 +2,8 @@
   "name": "RKW.PlayMode.Tests",
   "rootNamespace": "RKW.Tests.PlayMode",
   "references": [
-    "RKW.Core"
+    "RKW.Core",
+    "RKW.Network"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
