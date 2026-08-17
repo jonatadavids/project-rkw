@@ -6,6 +6,7 @@
     "RKW.Core",
     "RKW.Network",
     "RKW.UI",
+    "Unity.Localization",
     "UnityEngine.UI"
   ],
   "includePlatforms": [],

@@ -5,8 +5,6 @@ namespace RKW.UI
 {
     public sealed class MainMenuController : MonoBehaviour
     {
-        public const string ComingSoonText = "Disponível em breve";
-
         [SerializeField] private Button playButton;
         [SerializeField] private Button schoolButton;
         [SerializeField] private Button garageButton;
@@ -17,7 +15,9 @@ namespace RKW.UI
             playButton.onClick.AddListener(ShowComingSoon);
             schoolButton.onClick.AddListener(ShowComingSoon);
             garageButton.onClick.AddListener(ShowComingSoon);
-            feedbackText.text = ComingSoonText;
+            UnityEngine.Localization.Settings.LocalizationSettings.SelectedLocaleChanged +=
+                HandleLocaleChanged;
+            RefreshLocalizedText();
             feedbackText.gameObject.SetActive(false);
         }
 
@@ -26,12 +26,30 @@ namespace RKW.UI
             playButton.onClick.RemoveListener(ShowComingSoon);
             schoolButton.onClick.RemoveListener(ShowComingSoon);
             garageButton.onClick.RemoveListener(ShowComingSoon);
+            UnityEngine.Localization.Settings.LocalizationSettings.SelectedLocaleChanged -=
+                HandleLocaleChanged;
         }
 
         private void ShowComingSoon()
         {
-            feedbackText.text = ComingSoonText;
+            feedbackText.text = UiLocalization.Get(UiLocalization.MenuComingSoon);
             feedbackText.gameObject.SetActive(true);
+        }
+
+        private void HandleLocaleChanged(UnityEngine.Localization.Locale locale)
+        {
+            RefreshLocalizedText();
+        }
+
+        private void RefreshLocalizedText()
+        {
+            playButton.GetComponentInChildren<Text>(true).text =
+                UiLocalization.Get(UiLocalization.MenuPlay);
+            schoolButton.GetComponentInChildren<Text>(true).text =
+                UiLocalization.Get(UiLocalization.MenuSchool);
+            garageButton.GetComponentInChildren<Text>(true).text =
+                UiLocalization.Get(UiLocalization.MenuGarage);
+            feedbackText.text = UiLocalization.Get(UiLocalization.MenuComingSoon);
         }
     }
 }

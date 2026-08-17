@@ -374,17 +374,18 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Critério de conclusão: 100+ iterações passam_
   - _Evidência: Test Runner output_
 
-- [ ] M1-T10 Configurar Unity Localization e String Tables
-  - Instalar Unity Localization package
-  - Criar String Table Collection: "UI", "Instructor", "Penalties", "HUD"
-  - Configurar locale pt-BR como default
-  - Preparar locale en (vazio — Alpha/Beta)
-  - Zero strings hardcoded em código
+- [x] M1-T10 Configurar Unity Localization e String Tables
+  - Unity Localization `1.5.12` fixado; samples não importados
+  - Criada somente a String Table Collection `UI`, pois é a única com consumidores atuais; `Instructor`, `Penalties` e `HUD` foram adiadas até seus consumidores existirem
+  - pt-BR configurado como Project Locale e locale inicial
+  - en preparado sem traduções inventadas, com fallback seguro para pt-BR e sem seletor visível
+  - Sete textos consumidos pelo Bootstrap/MainMenu migrados; apenas a mensagem emergencial mínima de infraestrutura permanece hardcoded
+  - Inicialização e preload locais têm timeout configurável de 10 segundos por etapa; falha/timeout continua com fallback seguro e observa conclusões tardias
   - _Requirements: R28.4_
   - _Dependências: M1-T01_
-  - _Critério de conclusão: Localization funciona; strings carregadas de tables_
-  - _Testes: EditMode test que verifica string table load_
-  - _Evidência: String exibida via Localization API_
+  - _Critério de conclusão: Localization funciona; strings carregadas localmente da table UI sem texto vazio_
+  - _Testes: EditMode valida package/settings/table, timeout e conclusão tardia; PlayMode valida fluxo, fallback e chave ausente_
+  - _Evidência: String exibida via Localization API, captura sanitizada e builds Android/iOS_
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_

@@ -7,6 +7,7 @@ using NUnit.Framework;
 using RKW.Backend;
 using RKW.UI;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -21,6 +22,11 @@ namespace RKW.Tests.PlayMode
         public void TearDown()
         {
             BootstrapController.ResetTestOverrides();
+            var portuguese = LocalizationSettings.AvailableLocales?.GetLocale("pt-BR");
+            if (portuguese != null)
+            {
+                LocalizationSettings.SelectedLocale = portuguese;
+            }
         }
 
         [UnityTest]
@@ -150,9 +156,58 @@ namespace RKW.Tests.PlayMode
                 Assert.That(SceneManager.sceneCount, Is.EqualTo(initialSceneCount));
                 Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("MainMenu"));
                 Assert.That(GameObject.Find("FeedbackText").GetComponent<Text>().text,
-                    Is.EqualTo(MainMenuController.ComingSoonText));
+                    Is.EqualTo("Disponível em breve"));
                 Assert.That(GameObject.Find("FeedbackText").activeInHierarchy, Is.True);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator EnglishTechnicalLocale_FallsBackToPtBrWithoutBlankText()
+        {
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            yield return LoadBootstrapAndWaitForMainMenu();
+
+            var english = LocalizationSettings.AvailableLocales.GetLocale("en");
+            Assert.That(english, Is.Not.Null);
+            LocalizationSettings.SelectedLocale = english;
+            yield return WaitUntil(() =>
+                GameObject.Find("PlayButton").GetComponentInChildren<Text>().text == "JOGAR");
+
+            AssertButton("PlayButton", "JOGAR");
+            AssertButton("SchoolButton", "ESCOLA");
+            AssertButton("GarageButton", "GARAGEM");
+        }
+
+        [UnityTest]
+        public IEnumerator MissingUiKey_ReturnsSafeMessageAndWarnsOnlyOnce()
+        {
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            yield return LoadBootstrapAndWaitForMainMenu();
+
+            const string missingKey = "test.missing_key";
+            LogAssert.Expect(
+                LogType.Warning,
+                "Localization key 'test.missing_key' is missing; safe fallback text was returned.");
+
+            Assert.That(UiLocalization.Get(missingKey), Is.EqualTo("Texto indisponível."));
+            Assert.That(UiLocalization.Get(missingKey), Is.EqualTo("Texto indisponível."));
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [UnityTest]
+        public IEnumerator LocalizationInitialization_RecordsSanitizedMetrics()
+        {
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            yield return LoadBootstrapAndWaitForMainMenu();
+
+            Assert.That(UiLocalization.InitializationDurationMilliseconds,
+                Is.GreaterThanOrEqualTo(0));
+            Debug.Log(
+                $"RKW_M1T10_METRICS initialization_ms={UiLocalization.InitializationDurationMilliseconds:F3} " +
+                $"memory_delta_bytes={UiLocalization.InitializationMemoryDeltaBytes}");
         }
 
         [TestCase(2340f, 1080f, 80f, 0f, 2260f, 1080f)]
