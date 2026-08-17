@@ -322,6 +322,9 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Risco: Baixo_
 
 - [ ] M1-T07 Configurar CI/CD básico (Unity Build Automation)
+  - **Etapa A local parcial concluída em 2026-08-16:** suítes locais, APK Development ARM64/IL2CPP com debug signing, smoke físico no Galaxy S25, exportação Xcode e compile check iOS sem assinatura
+  - **M1-T07 permanece incompleta:** nenhum AAB, Unity Build Automation, trigger, distribuição, conta de loja, signing de produção ou upload foi configurado
+  - _Evidência parcial sanitizada: `docs/25-local-mobile-build-validation.md`_
   - Configurar Unity Build Automation para projeto
   - Criar build configs: Android (.aab) e iOS (IPA)
   - Configurar trigger em branch `release/*`
