@@ -6,7 +6,8 @@
     "Unity.Services.Authentication",
     "Unity.Services.CloudSave",
     "Unity.Services.Core",
-    "Unity.Services.Core.Environments"
+    "Unity.Services.Core.Environments",
+    "Unity.Services.RemoteConfig"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

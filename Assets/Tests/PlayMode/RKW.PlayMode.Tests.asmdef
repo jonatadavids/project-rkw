@@ -7,6 +7,7 @@
     "RKW.Network",
     "RKW.UI",
     "Unity.Localization",
+    "Unity.Services.RemoteConfig",
     "UnityEngine.UI"
   ],
   "includePlatforms": [],

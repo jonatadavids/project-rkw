@@ -10,12 +10,14 @@ namespace RKW.UI
     public sealed class BootstrapController : MonoBehaviour
     {
         internal static Func<IAuthenticationService> AuthenticationFactoryOverride;
+        internal static Func<IRemoteConfigService> RemoteConfigFactoryOverride;
 
         [SerializeField] private BootstrapStatusView statusView;
         [SerializeField] private string mainMenuSceneName = "MainMenu";
 
         private CancellationTokenSource _lifetimeCancellation;
         private IAuthenticationService _authenticationService;
+        private IRemoteConfigService _remoteConfigService;
         private bool _operationInProgress;
 
         private void Awake()
@@ -23,6 +25,8 @@ namespace RKW.UI
             _lifetimeCancellation = new CancellationTokenSource();
             _authenticationService = AuthenticationFactoryOverride?.Invoke()
                 ?? new UgsAuthenticationService();
+            _remoteConfigService = RemoteConfigFactoryOverride?.Invoke()
+                ?? new RemoteConfigManager();
         }
 
         private void Start()
@@ -40,6 +44,7 @@ namespace RKW.UI
         internal static void ResetTestOverrides()
         {
             AuthenticationFactoryOverride = null;
+            RemoteConfigFactoryOverride = null;
         }
 
         private async void BeginAuthentication()
@@ -69,6 +74,8 @@ namespace RKW.UI
                 }
                 else
                 {
+                    await _remoteConfigService.LoadAsync(_lifetimeCancellation.Token);
+                    _lifetimeCancellation.Token.ThrowIfCancellationRequested();
                     await LoadMainMenuAsync(_lifetimeCancellation.Token);
                     if (!_lifetimeCancellation.IsCancellationRequested)
                     {

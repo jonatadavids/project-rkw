@@ -390,15 +390,15 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M1-T11 Configurar Remote Config (UGS) com feature flags base
-  - Conectar UGS Remote Config
-  - Criar flags iniciais: `enable_multiplayer`, `enable_championship`, `enable_school`, `enable_ads`
-  - Implementar RemoteConfigManager que carrega flags no Bootstrap
+- [x] M1-T11 Configurar Remote Config (UGS) com feature flags base
+  - Unity Remote Config `com.unity.remote-config` 3.0.0 fixado; somente runtime, sem Deployment, Analytics ou samples
+  - Criadas em `development` as flags booleanas `enable_multiplayer`, `enable_championship`, `enable_school` e `enable_ads`, todas inicialmente `false`
+  - `RemoteConfigManager` carrega a allow-list após Authentication e antes do MainMenu; timeout/falha mantém defaults locais seguros
   - _Requirements: R12.5 (auto-adjust params), R29.3 (Remote Config ativa templates)_
   - _Dependências: M1-T05_
-  - _Critério de conclusão: Flags carregam do UGS e são acessíveis em código_
-  - _Testes: Integration test com fallback para defaults_
-  - _Evidência: Log de flags carregados_
+  - _Critério de conclusão: Flags carregam do UGS development e são acessíveis em código sem criar conteúdo novo_
+  - _Testes: EditMode para defaults/falha/timeout/cancelamento e PlayMode para ordem do Bootstrap; integração development confirma as quatro chaves_
+  - _Evidência: Integração development passou sem registrar identificadores_
   - _Validação humana: não_
   - _Ambiente: Unity Editor + internet_
   - _Risco: Baixo_

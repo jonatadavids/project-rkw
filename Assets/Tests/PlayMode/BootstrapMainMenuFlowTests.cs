@@ -52,6 +52,23 @@ namespace RKW.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator RemoteConfig_LoadsAfterAuthenticationBeforeMainMenu()
+        {
+            var remoteConfig = new PendingRemoteConfigService();
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            BootstrapController.RemoteConfigFactoryOverride = () => remoteConfig;
+
+            yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
+            yield return WaitUntil(() => remoteConfig.LoadCalls == 1);
+
+            Assert.That(SceneManager.GetSceneByName("MainMenu").isLoaded, Is.False);
+            remoteConfig.Complete(RemoteFeatureFlags.SafeDefaults);
+            yield return WaitUntil(() => SceneManager.GetSceneByName("MainMenu").isLoaded);
+            Assert.That(remoteConfig.LoadCalls, Is.EqualTo(1));
+        }
+
+        [UnityTest]
         public IEnumerator FailedAuthentication_ShowsSafeMessage_AndRetryRecovers()
         {
             var authentication = new StubAuthenticationService(false, true);
@@ -404,6 +421,32 @@ namespace RKW.Tests.PlayMode
                     _completion.TrySetCanceled(cancellationToken);
                 });
                 return _completion.Task;
+            }
+        }
+
+        private sealed class PendingRemoteConfigService : IRemoteConfigService
+        {
+            private readonly TaskCompletionSource<RemoteFeatureFlags> _completion =
+                new TaskCompletionSource<RemoteFeatureFlags>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public RemoteFeatureFlags Flags { get; private set; } = RemoteFeatureFlags.SafeDefaults;
+            public int LoadCalls { get; private set; }
+
+            public async Task<RemoteFeatureFlags> LoadAsync(
+                CancellationToken cancellationToken = default)
+            {
+                LoadCalls++;
+                using (cancellationToken.Register(() => _completion.TrySetCanceled(cancellationToken)))
+                {
+                    Flags = await _completion.Task;
+                    return Flags;
+                }
+            }
+
+            public void Complete(RemoteFeatureFlags flags)
+            {
+                _completion.TrySetResult(flags);
             }
         }
     }
