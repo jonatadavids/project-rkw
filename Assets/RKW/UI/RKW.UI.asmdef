@@ -3,6 +3,8 @@
   "rootNamespace": "RKW.UI",
   "references": [
     "RKW.Backend",
+    "Unity.Localization",
+    "Unity.ResourceManager",
     "UnityEngine.UI"
   ],
   "includePlatforms": [],

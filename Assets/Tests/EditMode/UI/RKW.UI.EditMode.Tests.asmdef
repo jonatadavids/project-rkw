@@ -1,0 +1,24 @@
+{
+  "name": "RKW.UI.EditMode.Tests",
+  "rootNamespace": "RKW.UI.Tests.EditMode",
+  "references": [
+    "RKW.UI",
+    "Unity.Localization",
+    "Unity.Localization.Editor",
+    "Unity.ResourceManager"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

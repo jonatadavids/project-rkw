@@ -320,7 +320,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: TENTAR NOVAMENTE
+  m_Text: Texto indisponível.
 --- !u!1 &6494005540211959833
 GameObject:
   m_ObjectHideFlags: 0
@@ -476,7 +476,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: Conectando...
+  m_Text: Texto indisponível.
 --- !u!1 &7675187210210250160
 GameObject:
   m_ObjectHideFlags: 0

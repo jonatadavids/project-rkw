@@ -7,7 +7,7 @@
 - UI: **uGUI 2.0.0**, já presente no projeto.
 - Serviços remotos consumidos: somente Authentication anônima do UGS no ambiente **`development`**.
 
-Não foram adicionados pacotes. Localization, Remote Config, perfil, Cloud Save no fluxo de menu, Photon, matchmaking, gameplay, garagem e escola permanecem fora desta tarefa. A composição é manual e não usa container de DI.
+M1-T06 não adicionou pacotes. A localização dos sete textos consumidos pelo fluxo foi integrada posteriormente por M1-T10, conforme `docs/26-localization-foundation.md`. Remote Config, perfil, Cloud Save no fluxo de menu, Photon, matchmaking, gameplay, garagem e escola permanecem fora deste fluxo. A composição é manual e não usa container de DI.
 
 Fontes oficiais consultadas em 2026-08-16:
 
@@ -22,7 +22,7 @@ Fontes oficiais consultadas em 2026-08-16:
 
 Uma única câmera ortográfica mínima pertence à cena `Bootstrap`, limpa o display com a mesma cor de fundo do menu e não renderiza nenhuma layer. Como `MainMenu` não contém câmera e o carregamento é idempotente, o fluxo additive mantém exatamente uma câmera ativa, sem custo relevante de geometria, sombras, pós-processamento, HDR, MSAA ou occlusion culling.
 
-Em falha ou timeout propagado pela fundação UGS, a tela mostra apenas a mensagem segura “Não foi possível conectar. Tente novamente.” e o botão `TENTAR NOVAMENTE`. Nenhum Player ID, token, exceção detalhada ou dado da conta aparece na UI. O Retry reutiliza o serviço existente e o carregamento é idempotente, impedindo uma segunda instância de `MainMenu`.
+Em falha ou timeout propagado pela fundação UGS, a tela mostra apenas a mensagem segura localizada “Não foi possível conectar. Tente novamente.” e o botão `TENTAR NOVAMENTE`. Nenhum Player ID, token, exceção detalhada ou dado da conta aparece na UI. O Retry reutiliza o serviço existente e o carregamento é idempotente, impedindo uma segunda instância de `MainMenu`.
 
 ## Interface provisória
 

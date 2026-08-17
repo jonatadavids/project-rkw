@@ -51,11 +51,14 @@ namespace RKW.UI
 
             _operationInProgress = true;
             statusView.gameObject.SetActive(true);
-            statusView.ShowLoading();
             var shouldShowFailure = false;
 
             try
             {
+                await UiLocalization.InitializeAsync(_lifetimeCancellation.Token);
+                _lifetimeCancellation.Token.ThrowIfCancellationRequested();
+                statusView.ShowLoading();
+
                 var authenticated = _authenticationService.IsSignedIn
                     || await _authenticationService.SignInAnonymouslyAsync(
                         _lifetimeCancellation.Token);
