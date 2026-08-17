@@ -8,7 +8,7 @@ Jogo mobile multiplayer de kart rental com dirigibilidade autêntica (simcade), 
 
 ## Status
 
-🧱 **M1 em andamento** — Fundação Unity, Photon, UGS de desenvolvimento e fluxo Bootstrap → MainMenu criados; M1-T01 a M1-T06 concluídas. Nenhum gameplay.
+🧱 **M1 em andamento** — Fundação Unity, Photon, UGS de desenvolvimento e fluxo Bootstrap → MainMenu criados; M1-T01 a M1-T06 concluídas e Etapa A local da M1-T07 validada parcialmente. Nenhum gameplay.
 
 ---
 
@@ -44,6 +44,7 @@ docs/
   22-photon-foundation.md    ← Fundação Photon de desenvolvimento
   23-ugs-foundation.md       ← Authentication e Cloud Save de desenvolvimento
   24-bootstrap-main-menu.md  ← Bootstrap e menu principal placeholder
+  25-local-mobile-build-validation.md ← Evidências locais parciais da M1-T07
   adr/
     0001-engine.md
     0002-networking.md

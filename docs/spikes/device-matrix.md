@@ -12,10 +12,12 @@
 |---|---|---|---|---|
 | Low Android | Modelo ainda não definido | **Pendente de aparelho emprestado para o gate de performance do M3** | Modelo/SKU, SoC, GPU, memória física e versão do SO | Gate mínimo de 30 FPS, memória e estabilidade térmica |
 | Mid Android | Modelo ainda não definido | **Empréstimo ou aparelho de piloto/testador** | Modelo/SKU, SoC, GPU, memória física e versão do SO | Meta de 60 FPS e cobertura de hardware intermediário real |
-| High Android | Samsung Galaxy S25 | **Disponível** | Variante/SKU exato, SoC, GPU, memória física e versão instalada do SO | Qualidade High, Vulkan, thermal e performance |
+| High Android | Samsung Galaxy S25 (`SM-S931B`) | **Disponível e validado na Etapa A local da M1-T07** | Android 16; 11.380.216 kB (aprox. 10,85 GiB) de memória física reportada; SoC/GPU permanecem para coleta via `SystemInfo` no gate de performance | Qualidade High, Vulkan, thermal e performance |
 | High iOS | iPhone 17 | **Disponível** | Modelo/SKU exato, SoC, GPU, memória reportada e versão instalada do iOS | Qualidade High, ProMotion, thermal e performance |
 
 O nome comercial não determina sozinho a configuração efetiva. No início dos testes, registrar o modelo/SKU exato e a memória observada no build por `SystemInfo`, além de conferir a ficha oficial correspondente à variante. A Apple não divulga RAM física na ficha técnica pública do iPhone 17; o valor operacional será o reportado pelo aparelho/build.
+
+Na validação local de 2026-08-16, o Galaxy S25 respondeu como `SM-S931B`, Android 16, tela física 1080×2340 a 480 dpi, ABI `arm64-v8a` e 11.380.216 kB de memória física. Esses valores foram coletados por ADB sem registrar serial, Android ID, IMEI ou dados pessoais. A coleta de SoC, GPU e memória via `SystemInfo` permanece obrigatória quando os testes de performance começarem.
 
 ## Justificativa
 
