@@ -5,6 +5,7 @@ using Unity.Services.Authentication;
 using Unity.Services.CloudSave;
 using Unity.Services.Core;
 using Unity.Services.Core.Environments;
+using Unity.Services.RemoteConfig;
 
 namespace RKW.Backend
 {
@@ -22,6 +23,13 @@ namespace RKW.Backend
         bool IsAuthenticatedForDevelopment { get; }
         Task SaveJsonAsync(string key, string json);
         Task<string> LoadJsonAsync(string key);
+    }
+
+    internal interface IRemoteConfigClient
+    {
+        bool IsAuthenticatedForDevelopment { get; }
+
+        Task<RemoteFeatureFlags> FetchAsync();
     }
 
     internal static class UgsRuntimeEnvironment
@@ -119,6 +127,41 @@ namespace RKW.Backend
             }
 
             return item.Value.GetAsString();
+        }
+    }
+
+    internal sealed class UnityRemoteConfigClient : IRemoteConfigClient
+    {
+        private struct EmptyUserAttributes
+        {
+        }
+
+        private struct EmptyAppAttributes
+        {
+        }
+
+        public bool IsAuthenticatedForDevelopment =>
+            UgsRuntimeEnvironment.IsDevelopmentConfirmed &&
+            UnityServices.State == ServicesInitializationState.Initialized &&
+            AuthenticationService.Instance.IsSignedIn;
+
+        public async Task<RemoteFeatureFlags> FetchAsync()
+        {
+            if (!IsAuthenticatedForDevelopment)
+            {
+                throw new InvalidOperationException(
+                    "Remote Config requires authenticated UGS development initialization.");
+            }
+
+            var config = await RemoteConfigService.Instance.FetchConfigsAsync(
+                new EmptyUserAttributes(),
+                new EmptyAppAttributes());
+
+            return new RemoteFeatureFlags(
+                config.GetBool(RemoteFeatureFlags.EnableMultiplayerKey, false),
+                config.GetBool(RemoteFeatureFlags.EnableChampionshipKey, false),
+                config.GetBool(RemoteFeatureFlags.EnableSchoolKey, false),
+                config.GetBool(RemoteFeatureFlags.EnableAdsKey, false));
         }
     }
 }
