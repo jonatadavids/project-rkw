@@ -34,6 +34,7 @@ Este repositório contém a documentação de engenharia e produto e a fundaçã
 | 21 | [Fundação Unity](./21-unity-foundation.md) | Configuração e decisões de M1-T01 a M1-T05 |
 | 22 | [Fundação Photon](./22-photon-foundation.md) | SDK e conexão mínima de desenvolvimento de M1-T04 |
 | 23 | [Fundação UGS](./23-ugs-foundation.md) | Authentication anônima e Cloud Save de desenvolvimento de M1-T05 |
+| 24 | [Bootstrap e Main Menu](./24-bootstrap-main-menu.md) | Fluxo de inicialização e menu placeholder de M1-T06 |
 
 ---
 

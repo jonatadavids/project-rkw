@@ -1,11 +1,8 @@
 {
-  "name": "RKW.PlayMode.Tests",
-  "rootNamespace": "RKW.Tests.PlayMode",
+  "name": "RKW.UI",
+  "rootNamespace": "RKW.UI",
   "references": [
     "RKW.Backend",
-    "RKW.Core",
-    "RKW.Network",
-    "RKW.UI",
     "UnityEngine.UI"
   ],
   "includePlatforms": [],
@@ -13,11 +10,8 @@
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": false,
+  "autoReferenced": true,
   "defineConstraints": [],
   "versionDefines": [],
-  "noEngineReferences": false,
-  "optionalUnityReferences": [
-    "TestAssemblies"
-  ]
+  "noEngineReferences": false
 }

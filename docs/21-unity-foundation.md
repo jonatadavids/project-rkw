@@ -1,4 +1,4 @@
-# 21 — Fundação do projeto Unity (M1-T01 a M1-T05)
+# 21 — Fundação do projeto Unity (M1-T01 a M1-T06)
 
 ## Escopo e ambiente
 
@@ -6,7 +6,7 @@
 - Editor: **Unity 6.3 LTS — 6000.3.22f1 (1c726e1fb402), Apple Silicon**.
 - Template oficial: **Universal 3D / URP** (`com.unity.template.urp-blank@17.0.14`).
 - Render pipeline: **URP 17.3.0**.
-- Photon Fusion 2 foi integrado exclusivamente na fundação mínima de M1-T04. A fundação UGS de M1-T05 usa somente Services Core, Authentication anônima e Cloud Save no ambiente `development`. CI/CD, gameplay, kart e pista não foram iniciados.
+- Photon Fusion 2 foi integrado exclusivamente na fundação mínima de M1-T04. A fundação UGS de M1-T05 usa somente Services Core, Authentication anônima e Cloud Save no ambiente `development`. M1-T06 adiciona apenas o fluxo Bootstrap → MainMenu com uGUI. CI/CD, gameplay, kart e pista não foram iniciados.
 
 ## Configuração base
 
@@ -28,6 +28,7 @@ Somente assemblies com consumidor neste bloco foram criadas:
 - `RKW.Core`: identidade técnica compartilhada e sem referência ao UnityEngine.
 - `RKW.Network`: ciclo mínimo de conexão/desconexão Photon Shared Mode, sem gameplay networking.
 - `RKW.Backend`: login anônimo UGS e persistência JSON mínima no Cloud Save de desenvolvimento.
+- `RKW.UI`: composição manual do Bootstrap, carregamento additive, safe area e menu placeholder.
 - `RKW.Core.EditMode.Tests`: teste de sanidade da fundação.
 - `RKW.Network.EditMode.Tests`: contrato mock do ciclo de transporte.
 - `RKW.Backend.EditMode.Tests`: contrato de persistência e round-trip determinístico do DTO de transporte.
@@ -87,5 +88,4 @@ Durante a primeira tentativa do build Android, uma `Library` reconstruída a par
 - M6: `RKW.Race`, `RKW.Race.Tests`.
 - M7: `RKW.School`.
 - M8: ampliar `RKW.Backend` e seus testes somente com consumidores de perfil, autoridade e economia; criar `RKW.Championship` e `RKW.Championship.Tests`.
-- M9: `RKW.UI`.
 - Quando houver consumidor: `RKW.Track`, `RKW.Track.Tests`, `RKW.Editor`.
