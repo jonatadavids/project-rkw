@@ -20,6 +20,8 @@ Fontes oficiais consultadas em 2026-08-16:
 
 `Bootstrap` é a primeira cena nos Build Settings e permanece carregada. Ela cria manualmente o serviço de autenticação, solicita login anônimo e, após sucesso, carrega `MainMenu` com `LoadSceneMode.Additive`. A cena `MainMenu` passa a ser a cena ativa, sem descarregar `Bootstrap`.
 
+Uma única câmera ortográfica mínima pertence à cena `Bootstrap`, limpa o display com a mesma cor de fundo do menu e não renderiza nenhuma layer. Como `MainMenu` não contém câmera e o carregamento é idempotente, o fluxo additive mantém exatamente uma câmera ativa, sem custo relevante de geometria, sombras, pós-processamento, HDR, MSAA ou occlusion culling.
+
 Em falha ou timeout propagado pela fundação UGS, a tela mostra apenas a mensagem segura “Não foi possível conectar. Tente novamente.” e o botão `TENTAR NOVAMENTE`. Nenhum Player ID, token, exceção detalhada ou dado da conta aparece na UI. O Retry reutiliza o serviço existente e o carregamento é idempotente, impedindo uma segunda instância de `MainMenu`.
 
 ## Interface provisória
@@ -55,7 +57,7 @@ Execução em 2026-08-16:
 |---|---|
 | Compilação C# | Sucesso; nenhum erro ou warning C# novo |
 | EditMode | 32/32 passaram |
-| PlayMode local | 12/12 executados passaram; 5 integrações/captura condicionais ignoradas; Retry e destruição durante autenticação pendente cobertos |
+| PlayMode local | 13/13 executados passaram; 5 integrações/captura condicionais ignoradas; Retry, destruição durante autenticação pendente e câmera única após carga/repetição cobertos |
 | Bootstrap com UGS real | 1/1 passou; Authentication e cena additive confirmadas em `development` |
 | Android compile check | Sucesso; nenhum aplicativo gerado |
 | iOS compile check | Sucesso; nenhum projeto Xcode, signing ou aplicativo gerado |

@@ -315,8 +315,8 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Requirements: R2 (modos de jogo — estrutura)_
   - _Dependências: M1-T01, M1-T05_
   - _Critério de conclusão: App inicia em Bootstrap, carrega MainMenu, botões visíveis_
-  - _Testes: EditMode 32/32; PlayMode local 12/12 com 5 integrações/captura condicionais ignoradas; inclui Retry sem concorrência e destruição durante autenticação pendente; integração real do Bootstrap com UGS 1/1_
-  - _Evidência: captura Unity 2340×1080 sem dados sensíveis em `/tmp/rkw-m1-t06-main-menu.png`; Bootstrap e MainMenu carregadas additive_
+  - _Testes: EditMode 32/32; PlayMode local 13/13 com 5 integrações/captura condicionais ignoradas; inclui Retry sem concorrência, destruição durante autenticação pendente e câmera única após carga/repetição; integração real do Bootstrap com UGS 1/1_
+  - _Evidência: captura Unity 2340×1080 sem dados sensíveis em `/tmp/rkw-m1-t06-main-menu.png`; Bootstrap e MainMenu carregadas additive com exatamente uma câmera ativa_
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
