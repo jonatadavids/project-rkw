@@ -293,7 +293,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor + internet_
   - _Risco: Médio — SDK pode ter breaking changes; pin version_
 
-- [ ] M1-T05 Integrar UGS base (Authentication + Cloud Save)
+- [x] M1-T05 Integrar UGS base (Authentication + Cloud Save)
   - Configurar Unity Gaming Services no projeto (Project Settings → Services)
   - Implementar AuthenticationService: SignInAnonymously() como default
   - Implementar Cloud Save read/write básico (salvar/carregar JSON simples)
@@ -301,8 +301,9 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Requirements: R10.5, R9.7 (backend)_
   - _Dependências: M1-T01_
   - _Critério de conclusão: Login anônimo funciona + JSON salva/carrega do Cloud Save_
-  - _Testes: Integration test (requer rede)_
-  - _Evidência: Log de auth + dados persistidos verificados no UGS Dashboard_
+  - _Testes: EditMode 32/32; PlayMode local 6/6 com 3 integrações ignoradas; integração UGS real 7/7 executados com 2 integrações Photon ignoradas_
+  - _Evidência: Auth anônima e round-trip da chave `rkw_m1_t05_smoke_v1` confirmados no ambiente `development`; dado verificado no UGS Dashboard em 2026-08-16_
+  - _Robustez: timeouts finitos/configuráveis para init, auth, save e load; cancelamento best-effort com observação segura da tarefa SDK; JSON validado antes do envio_
   - _Validação humana: não_
   - _Ambiente: Unity Editor + internet_
   - _Risco: Médio — requer conta UGS configurada_

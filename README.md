@@ -8,7 +8,7 @@ Jogo mobile multiplayer de kart rental com dirigibilidade autêntica (simcade), 
 
 ## Status
 
-🧱 **M1 em revisão** — Fundação Unity criada; M1-T01 a M1-T03 concluídas. Nenhum gameplay ou integração externa.
+🧱 **M1 em andamento** — Fundação Unity, Photon e UGS de desenvolvimento criadas; M1-T01 a M1-T05 concluídas. Nenhum gameplay.
 
 ---
 
@@ -40,7 +40,9 @@ docs/
   18-product-backlog.md     ← Histórias para o Codex
   19-risk-register.md
   20-open-questions.md
-  21-unity-foundation.md     ← Evidências de M1-T01 a M1-T03
+  21-unity-foundation.md     ← Evidências da fundação Unity
+  22-photon-foundation.md    ← Fundação Photon de desenvolvimento
+  23-ugs-foundation.md       ← Authentication e Cloud Save de desenvolvimento
   adr/
     0001-engine.md
     0002-networking.md

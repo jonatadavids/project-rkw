@@ -1,0 +1,20 @@
+{
+  "name": "RKW.Backend",
+  "rootNamespace": "RKW.Backend",
+  "references": [
+    "Unity.Newtonsoft.Json",
+    "Unity.Services.Authentication",
+    "Unity.Services.CloudSave",
+    "Unity.Services.Core",
+    "Unity.Services.Core.Environments"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
