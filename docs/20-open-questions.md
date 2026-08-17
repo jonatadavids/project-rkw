@@ -25,7 +25,7 @@ Centralizar todas as questões que exigem decisão humana, validação externa o
 |---|---|---|---|---|---|
 | Q-PV-01 | Qual kartódromo real abordar primeiro para pista licenciada? | 🟢 | Pós-MVP | Fundador | Parcerias comerciais |
 | Q-PV-02 | Idade mínima de cadastro? Política de controle parental? | 🟠 | M1 | Fundador + jurídico | **Não bloqueia a fundação técnica do M1. Bloqueia:** fluxo definitivo de idade e conta infantil, anúncios reais, IAP real, Alpha externo e publicação nas lojas. Não implementar checkbox, ano de nascimento ou autodeclaração de idade sem parecer jurídico. Checklist preliminar aprovado: [`docs/spikes/legal-checklist.md`](./spikes/legal-checklist.md). |
-| Q-PV-03 | Nome provisório "Rental Kart World" — confirmar registro de marca | 🟠 | M1 | Fundador (🧑‍💻) | Placeholder técnico provisório: `br.com.suitedigital.rentalkartworld`. Nome comercial e identificador definitivo continuam pendentes. |
+| Q-PV-03 | Nome comercial provisório `KARTGRID` — confirmar marca, domínio e disponibilidade nas lojas | 🟠 | M1 | Fundador (🧑‍💻) | `KARTGRID` é somente nome comercial provisório do protótipo. Pesquisa de marca, domínio e disponibilidade nas lojas permanece obrigatória. O placeholder técnico provisório `br.com.suitedigital.rentalkartworld` não foi alterado. |
 | Q-GDD-01 | Voltas de corrida configuráveis por sala privada? | 🟡 | M5 | Fundador | Flexibilidade social |
 | Q-GDD-02 | Ghost compartilhável entre amigos? | 🟢 | Pós-MVP | Fundador | Social feature |
 | Q-GDD-03 | Replay completo ou apenas highlight reel? | 🟡 | M7 | Fundador | Custo de storage/CPU |

@@ -11,7 +11,7 @@ namespace RKW.Backend
     /// authentication have finite configurable timeouts; caller cancellation is
     /// best-effort when the wrapped SDK operation is already in progress.
     /// </summary>
-    public sealed class UgsAuthenticationService
+    public sealed class UgsAuthenticationService : IAuthenticationService
     {
         public const string EnvironmentName = "development";
 
