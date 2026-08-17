@@ -35,6 +35,7 @@ namespace RKW.Tests.PlayMode
             Assert.That(SceneManager.GetSceneByName("MainMenu").isLoaded, Is.True);
             Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("MainMenu"));
             Assert.That(CountLoadedScenesNamed("MainMenu"), Is.EqualTo(1));
+            AssertExactlyOneActiveCamera();
 
             AssertButton("PlayButton", "JOGAR");
             AssertButton("SchoolButton", "ESCOLA");
@@ -67,6 +68,25 @@ namespace RKW.Tests.PlayMode
 
             Assert.That(authentication.CallCount, Is.EqualTo(2));
             Assert.That(CountLoadedScenesNamed("MainMenu"), Is.EqualTo(1));
+            AssertExactlyOneActiveCamera();
+        }
+
+        [UnityTest]
+        public IEnumerator RepeatedBootstrapToMainMenuLoads_KeepExactlyOneActiveCamera()
+        {
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+
+            yield return LoadBootstrapAndWaitForMainMenu();
+            AssertExactlyOneActiveCamera();
+
+            yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
+            yield return WaitUntil(() =>
+                SceneManager.GetSceneByName("MainMenu").isLoaded
+                && SceneManager.GetActiveScene().name == "MainMenu");
+
+            Assert.That(CountLoadedScenesNamed("MainMenu"), Is.EqualTo(1));
+            AssertExactlyOneActiveCamera();
         }
 
         [UnityTest]
@@ -193,11 +213,11 @@ namespace RKW.Tests.PlayMode
             const int height = 1080;
             const string outputPath = "/tmp/rkw-m1-t06-main-menu.png";
             var canvas = GameObject.Find("MainMenuView").GetComponent<Canvas>();
-            var cameraObject = new GameObject("ReviewCaptureCamera");
-            var captureCamera = cameraObject.AddComponent<Camera>();
-            captureCamera.clearFlags = CameraClearFlags.SolidColor;
-            captureCamera.backgroundColor = Color.black;
-            captureCamera.orthographic = true;
+            var captureCamera = Camera.main;
+            Assert.That(captureCamera, Is.Not.Null);
+            AssertExactlyOneActiveCamera();
+            var originalCullingMask = captureCamera.cullingMask;
+            captureCamera.cullingMask = ~0;
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = captureCamera;
             canvas.planeDistance = 1f;
@@ -213,9 +233,11 @@ namespace RKW.Tests.PlayMode
 
             RenderTexture.active = null;
             captureCamera.targetTexture = null;
+            captureCamera.cullingMask = originalCullingMask;
+            canvas.worldCamera = null;
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             UnityEngine.Object.Destroy(renderTexture);
             UnityEngine.Object.Destroy(image);
-            UnityEngine.Object.Destroy(cameraObject);
 
             Assert.That(new FileInfo(outputPath).Length, Is.GreaterThan(1024));
         }
@@ -254,6 +276,18 @@ namespace RKW.Tests.PlayMode
             }
 
             return count;
+        }
+
+        private static void AssertExactlyOneActiveCamera()
+        {
+            var cameras = UnityEngine.Object.FindObjectsByType<Camera>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+
+            Assert.That(cameras, Has.Length.EqualTo(1));
+            Assert.That(cameras[0].gameObject.name, Is.EqualTo("Bootstrap Camera"));
+            Assert.That(cameras[0].gameObject.scene.name, Is.EqualTo("Bootstrap"));
+            Assert.That(cameras[0].cullingMask, Is.Zero);
         }
 
         private static bool EnvironmentFlagIsSet(string variableName)
