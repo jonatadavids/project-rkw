@@ -432,6 +432,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Risco: Latência pode ser alta em Android antigo; documentar workaround_
 
 - [ ] M1-T14 Exit Gate M1
+  - **Decisão humana de entrada condicional em 2026-08-17:** o gate integral permanece aberto, mas M2-T01 pode ser iniciado em tarefa própria; M1-T07, M1-T12 e M1-T13 continuam `[ ]` com as exceções rastreadas em `docs/28-m1-conditional-gate.md`
   - Projeto compila para Android e iOS sem erros (iOS via Xcode export — assinatura condicional)
   - Assemblies iniciais isolados e compilação incremental funciona
   - Property test NUnit com gerador determinístico executa e passa

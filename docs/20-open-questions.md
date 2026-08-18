@@ -160,6 +160,13 @@ Centralizar todas as questões que exigem decisão humana, validação externa o
 - Nenhuma questão vermelha bloqueia a fundação do projeto.
 - Aprovação deste gate não inicia nem autoriza tarefas M1.
 
+## Decisão humana — entrada condicional no M2 (2026-08-17)
+
+- O Exit Gate M1 integral permanece aberto; M1-T07, M1-T12, M1-T13 e M1-T14 continuam `[ ]` sem redução de seus critérios.
+- Está autorizada a entrada condicional somente em M2-T01, pois as pendências restantes não bloqueiam física, controles locais ou pista greybox.
+- M1-T07 mantém UBA, lojas, triggers e distribuição adiados, sem cobrança; M1-T12 mantém heartbeat e duas localidades pendentes; M1-T13 mantém profiling Android low/mid pendente para M3.
+- Esta decisão não inicia M2-T01 nem autoriza M2-T02+, produção ou publicação. Detalhes e evidências: [`docs/28-m1-conditional-gate.md`](./28-m1-conditional-gate.md).
+
 ---
 
 ## Links Relacionados
