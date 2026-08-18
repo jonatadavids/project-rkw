@@ -61,6 +61,53 @@ namespace RKW.Physics
             return baseAcceleration * (1f - speedRatio * speedRatio);
         }
 
+        /// <summary>
+        /// Calculates effective braking deceleration considering rear-biased distribution,
+        /// steering-induced oversteer tendency, and wheel lock threshold.
+        /// Returns: (effectiveDeceleration, oversteerFactor)
+        /// </summary>
+        public static void CalculateBrakingWithSteering(
+            float brakeInput,
+            float steeringMagnitude,
+            float speedMetersPerSecond,
+            float maxBrakeDeceleration,
+            float rearBrakeDistribution,
+            float currentGripRatio,
+            float lateralGripG,
+            float brakeOversteerGain,
+            out float effectiveDeceleration,
+            out float oversteerFactor)
+        {
+            brakeInput = Mathf.Clamp01(brakeInput);
+            steeringMagnitude = Mathf.Clamp01(Mathf.Abs(steeringMagnitude));
+            rearBrakeDistribution = Mathf.Clamp(rearBrakeDistribution, 0.5f, 1f);
+
+            // Base brake force
+            var requestedDeceleration = maxBrakeDeceleration * brakeInput;
+
+            // Lock threshold: max braking = available grip * g
+            var availableGrip = Mathf.Max(0.01f, currentGripRatio) * lateralGripG * Gravity;
+            var lockRatio = requestedDeceleration / Mathf.Max(0.01f, availableGrip);
+
+            // If braking exceeds grip, reduce effectiveness (wheel lock)
+            effectiveDeceleration = lockRatio > 1f
+                ? requestedDeceleration * (1f / lockRatio) * 0.85f // locked wheels = less braking
+                : requestedDeceleration;
+
+            // Oversteer factor: braking with steering causes rear to slide
+            // More steering + more brake + more rear distribution = more oversteer
+            oversteerFactor = steeringMagnitude * brakeInput * rearBrakeDistribution *
+                              Mathf.Max(0f, brakeOversteerGain);
+
+            // Straight-line braking is always more effective (no oversteer penalty)
+            if (steeringMagnitude > 0.01f)
+            {
+                // Braking with steering: slightly longer stopping distance
+                var steeringPenalty = 1f - steeringMagnitude * 0.15f;
+                effectiveDeceleration *= Mathf.Max(0.7f, steeringPenalty);
+            }
+        }
+
         public static float CalculateSteeringSpeedLoss(
             float steeringMagnitude,
             float speedMetersPerSecond,

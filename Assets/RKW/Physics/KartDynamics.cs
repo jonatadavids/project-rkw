@@ -22,6 +22,7 @@ namespace RKW.Physics
         public float GripRatio => _currentGripRatio;
         public float LateralWeightTransferRatio { get; private set; }
         public float InnerRearLift { get; private set; }
+        public float BrakeOversteerFactor { get; private set; }
         public KartCategorySO Tuning => tuning;
 
         public void Configure(KartCategorySO category, Transform kartVisual = null)
@@ -101,10 +102,26 @@ namespace RKW.Physics
 
             if (_brakeInput > 0f && forwardSpeed > 0.25f)
             {
-                _body.AddForce(-transform.forward * (tuning.BrakeDeceleration * _brakeInput),
-                    ForceMode.Acceleration);
+                KartDynamicsMath.CalculateBrakingWithSteering(
+                    _brakeInput,
+                    _steeringInput,
+                    forwardSpeed,
+                    tuning.BrakeDeceleration,
+                    tuning.RearBrakeDistribution,
+                    _currentGripRatio,
+                    tuning.LateralGripG,
+                    tuning.BrakeOversteerGain,
+                    out var effectiveBrake,
+                    out var oversteer);
+                BrakeOversteerFactor = oversteer;
+                _body.AddForce(-transform.forward * effectiveBrake, ForceMode.Acceleration);
             }
-            else if (_brakeInput > 0f && forwardSpeed > -tuning.ReverseMaxSpeedMetersPerSecond)
+            else
+            {
+                BrakeOversteerFactor = 0f;
+            }
+
+            if (_brakeInput > 0f && forwardSpeed <= 0.25f && forwardSpeed > -tuning.ReverseMaxSpeedMetersPerSecond)
             {
                 _body.AddForce(-transform.forward * (tuning.ReverseAcceleration * _brakeInput),
                     ForceMode.Acceleration);
@@ -156,8 +173,10 @@ namespace RKW.Physics
                 tuning.InnerRearLiftThreshold);
 
             var rigidAxleRelease = Mathf.Lerp(1f - tuning.RigidAxleGripInfluence, 1f, InnerRearLift);
+            var brakeOversteerReduction = 1f - BrakeOversteerFactor * 0.3f; // braking with steering reduces grip
             var maximumLateralAcceleration = tuning.LateralGripG * KartDynamicsMath.Gravity *
-                                             _currentGripRatio * rigidAxleRelease;
+                                             _currentGripRatio * rigidAxleRelease *
+                                             Mathf.Max(0.4f, brakeOversteerReduction);
             var requestedAcceleration = -localVelocity.x * tuning.LateralResponse;
             var lateralAcceleration = Mathf.Clamp(
                 requestedAcceleration,

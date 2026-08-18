@@ -18,6 +18,8 @@ namespace RKW.Physics
         [Min(1f)] [SerializeField] private float maxSpeedKph = 55f;
         [Min(0.1f)] [SerializeField] private float zeroToMaxSeconds = 8f;
         [Min(0f)] [SerializeField] private float brakeDeceleration = 10f;
+        [Range(0.5f, 1f)] [SerializeField] private float rearBrakeDistribution = 0.7f;
+        [Min(0f)] [SerializeField] private float brakeOversteerGain = 1.2f;
         [Min(0f)] [SerializeField] private float reverseAcceleration = 2.5f;
         [Min(1f)] [SerializeField] private float reverseMaxSpeedKph = 12f;
         [Min(0f)] [SerializeField] private float coastingDeceleration = 1.6f;
@@ -53,6 +55,8 @@ namespace RKW.Physics
         public float MaxSpeedMetersPerSecond => maxSpeedKph / 3.6f;
         public float ZeroToMaxSeconds => zeroToMaxSeconds;
         public float BrakeDeceleration => brakeDeceleration;
+        public float RearBrakeDistribution => rearBrakeDistribution;
+        public float BrakeOversteerGain => brakeOversteerGain;
         public float ReverseAcceleration => reverseAcceleration;
         public float ReverseMaxSpeedMetersPerSecond => reverseMaxSpeedKph / 3.6f;
         public float CoastingDeceleration => coastingDeceleration;
