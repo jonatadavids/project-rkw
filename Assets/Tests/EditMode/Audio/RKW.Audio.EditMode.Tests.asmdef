@@ -1,17 +1,12 @@
 {
-  "name": "RKW.PlayMode.Tests",
-  "rootNamespace": "RKW.Tests.PlayMode",
+  "name": "RKW.Audio.EditMode.Tests",
+  "rootNamespace": "RKW.Audio.Tests.EditMode",
   "references": [
-    "RKW.Audio",
-    "RKW.Backend",
-    "RKW.Core",
-    "RKW.Network",
-    "RKW.UI",
-    "Unity.Localization",
-    "Unity.Services.RemoteConfig",
-    "UnityEngine.UI"
+    "RKW.Audio"
   ],
-  "includePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,

@@ -417,6 +417,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Risco: Região "sa" pode não existir ou ter latência alta; plano B documentado_
 
 - [ ] M1-T13 Executar validação de Unity Audio em dispositivo real (protocolo M0-T07)
+  - **Execução parcial em 2026-08-17:** harness técnico e quatro camadas do Unity Audio aprovados por validação auditiva no Galaxy S25 high-tier; Android low/mid, profiling e critério de CPU low-tier permanecem pendentes para M3. O checkbox integral permanece aberto.
   - Implementar cena de teste com audio sources, mixers e spatial audio conforme protocolo M0-T07
   - Testar em ao menos 1 Android real (e iOS se disponível)
   - Medir: latência de trigger, CPU usage, suporte a mixers simultâneos (motor + zebra + colisão + ambiente)
