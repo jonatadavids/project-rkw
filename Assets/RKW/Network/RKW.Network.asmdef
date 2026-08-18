@@ -2,7 +2,8 @@
   "name": "RKW.Network",
   "rootNamespace": "RKW.Network",
   "references": [
-    "Fusion.Unity"
+    "Fusion.Unity",
+    "Photon.Realtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

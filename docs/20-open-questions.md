@@ -67,7 +67,7 @@ Centralizar todas as questões que exigem decisão humana, validação externa o
 | ~~Q-MP-02~~ | ~~Custo mensal Photon para 1.000 CCU?~~ | ✅ PESQUISADO | M0 | Fundador (🧑‍💻) | **Photon Development 20 CCU aprovado. Nenhuma contratação de Photon 1.000 CCU foi autorizada.** A referência pesquisada para 1.000 CCU é US$ 250/mês + possível excedente de tráfego, consulta oficial em 2026-08-16. Ver [`docs/spikes/photon-cost-estimate.md`](./spikes/photon-cost-estimate.md). |
 | Q-MP-03 | Custom server vs Photon Server para ranked? | 🟡 | M10 | Fundador + Agente | Custo vs controle |
 | Q-MP-04 | Voice chat futuro? SDK? | 🟢 | Pós-MVP | Fundador | UX/custo |
-| Q-MP-05 | Qual região Photon usar para audiência brasileira? | 🟠 PROTOCOLO APROVADO | M1 | Agente + Fundador | Protocolo aprovado; `sa`/São Paulo é candidata e o benchmark real em Brasília, São Paulo e Recife será executado em M1. A região definitiva depende dos resultados. Ver [`docs/spikes/photon-region-latency-protocol.md`](./spikes/photon-region-latency-protocol.md). |
+| Q-MP-05 | Qual região Photon usar para audiência brasileira? | 🟠 MEDIÇÃO PARCIAL | M1 | Agente + Fundador | Protocolo aprovado. Em 2026-08-18, o snapshot de Brasília indicou `sa` ≈ 21 ms, `ussc` ≈ 171 ms e `us` ≈ 172 ms; `sa` é a recomendação provisória. O cache de 10 segundos do Fusion impede tratar chamadas sucessivas como série temporal. Faltam heartbeat de sessão e ao menos duas localidades BR reais, sem VPN, para decisão definitiva. Ver [`protocolo`](./spikes/photon-region-latency-protocol.md) e [`resultados`](./spikes/photon-region-latency.md). |
 
 ### Backend e Economia
 

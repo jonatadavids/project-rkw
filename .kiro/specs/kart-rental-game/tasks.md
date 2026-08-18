@@ -404,12 +404,12 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Risco: Baixo_
 
 - [ ] M1-T12 Executar teste de latência Photon (protocolo M0-T03)
-  - Implementar script de ping para regiões Photon disponíveis conforme protocolo documentado em M0-T03
-  - Medir latência de Brasília e ao menos 2 outras localizações BR (SP, RJ ou NE)
-  - Documentar resultados em `docs/spikes/photon-region-latency.md` (atualizar protocolo com resultados)
+  - **Execução parcial em 2026-08-18:** snapshot tipado de Brasília retornou `sa` ≈ 21 ms, `ussc` ≈ 171 ms e `us` ≈ 172 ms; chamadas sucessivas não contam como amostras porque o Fusion 2.1.1 mantém cache regional por 10 segundos
+  - Recomendação provisória `sa`, sem configuração Photon alterada; faltam heartbeat de sessão utilizável e dados reais de ao menos 2 localidades BR (SP, RJ ou NE)
+  - Resultados sanitizados e procedimento futuro em `docs/spikes/photon-region-latency.md`
   - _Requirements: R9.9_
   - _Dependências: M1-T04 (Photon SDK integrado), M0-T03 (protocolo definido)_
-  - _Critério de conclusão: Tabela com ping médio por região, recomendação de região padrão_
+  - _Critério de conclusão: Tabela com ping médio por região e recomendação baseada em resultados reais de Brasília e ao menos duas outras localidades brasileiras_
   - _Testes: Script de medição executável_
   - _Evidência: Output de ping com timestamps_
   - _Validação humana: 🧑‍💻 Fundador valida se latência é aceitável_
