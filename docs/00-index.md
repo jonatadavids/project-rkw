@@ -38,6 +38,7 @@ Este repositório contém a documentação de engenharia e produto e a fundaçã
 | 25 | [Validação Local Mobile](./25-local-mobile-build-validation.md) | Etapa A local e parcial da M1-T07, sem publicação |
 | 26 | [Fundação de Localização](./26-localization-foundation.md) | Unity Localization e String Table UI de M1-T10 |
 | 27 | [Fundação de Remote Config](./27-remote-config-foundation.md) | Flags base UGS de M1-T11 |
+| M1-T12 | [Resultados de Latência Photon](./spikes/photon-region-latency.md) | Snapshot de Brasília; heartbeat e duas localidades pendentes |
 
 ---
 
