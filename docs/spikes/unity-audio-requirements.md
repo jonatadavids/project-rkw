@@ -86,6 +86,42 @@ Em M1, executar primeiro no Samsung Galaxy S25 e no iPhone 17 disponíveis. Repe
 
 Escolher o menor buffer que passe 30 minutos sem glitches e com CPU < 2 ms no low-tier. Se `Best Latency` falhar, usar `Good Latency`/`Default` por tier.
 
+## Execução parcial M1-T13 — Galaxy S25
+
+**Data:** 2026-08-17
+
+**Dispositivo:** Samsung Galaxy S25 (`SM-S931B`), Android 16 (API 36), 11.113 MB de memória reportados por `SystemInfo`.
+
+**Build:** Development, IL2CPP, ARM64, Bundle ID provisório de desenvolvimento. APK, logs, captura e resultados brutos permaneceram fora do Git.
+
+Foi criado um harness técnico isolado, fora do fluxo `Bootstrap`/`MainMenu`, usando somente Unity Audio nativo. O harness gera em runtime sinais sintéticos próprios e provisórios, sem assets externos, e os direciona para um `AudioMixer` com os grupos `Engine`, `TiresAndRoad`, `Impacts` e `Ambience`. Ele permite iniciar, parar e repetir loops; ativar/desativar cada camada; disparar colisão; e alterar suavemente volume e pitch do motor. Esses sons não representam o áudio final do jogo.
+
+### Evidência automatizada e de build
+
+- EditMode direcionado: **3/3 aprovados**, cobrindo volumes defensivos, geração PCM finita e grupos obrigatórios do Mixer.
+- PlayMode direcionado: **1/1 aprovado**, cobrindo quatro fontes, roteamento, ciclos start/stop/repeat, colisão e alteração de motor.
+- Compilação C#: aprovada pelas execuções direcionadas.
+- APK Development IL2CPP/ARM64: gerado uma vez com sucesso, instalado via ADB e aberto sem crash no Galaxy S25.
+- Cena técnica não adicionada às cenas do fluxo normal do aplicativo.
+
+### Validação humana auditiva
+
+O fundador aprovou no alto-falante interno do Galaxy S25:
+
+- quatro camadas simultâneas audíveis e distinguíveis: motor, zebra/rolagem, colisão e ambiente;
+- colisão percebida imediatamente, sem corte das demais camadas;
+- alteração suave do volume e pitch do motor;
+- início, parada e repetição das camadas;
+- ausência percebida de estalos, glitches ou travamentos durante a sessão interativa curta.
+
+Fone/Bluetooth não foi exigido nem confirmado nesta execução. A resposta da colisão foi uma avaliação auditiva qualitativa; não foi convertida em milissegundos porque não houve câmera de alta velocidade, loopback ou equipamento de medição. Também não foi registrado valor de Audio CPU: sem captura confiável do Unity Profiler, não se declara CPU `< 2 ms`.
+
+### Estado e pendências
+
+A validação high-tier Android desta etapa está **aprovada** dentro do escopo reduzido autorizado. Ela não executou a matriz completa do protocolo (quantidades máximas de vozes, snapshots, buffer variants, sessão de 30 minutos, profiling contínuo ou iOS).
+
+M1-T13 permanece **[ ] parcial**, pois o critério documental exige Audio CPU `< 2 ms` em dispositivo Android low-tier. Android low-tier e mid-tier continuam pendentes por empréstimo ou aparelho de piloto/testador para o gate de performance do M3; nenhuma compra é exigida. Até essa medição, Unity Audio nativo continua aprovado para a fundação/MVP nos limites já documentados, sem validar configuração final por tier.
+
 ## Decisão Q-AA-02
 
 **Aprovada com condição na revisão humana de 2026-08-16:** Unity Audio nativo será usado no MVP, condicionado ao teste prático em M1. Wwise/FMOD não será adicionado sem novo consumidor, profiling que demonstre insuficiência ou decisão arquitetural aprovada. A configuração final permanece condicionada ao teste M1-T13.
