@@ -62,9 +62,38 @@ namespace RKW.Physics
         }
 
         /// <summary>
+        /// Calculates slipstream drag reduction based on distance to leading kart.
+        /// Closer = more reduction (monotonically decreasing with distance).
+        /// Returns value in [0, maxReduction].
+        /// </summary>
+        public static float CalculateSlipstreamDragReduction(
+            float distanceToLeader,
+            float kartLength,
+            float maxActivationDistance,
+            float maxReduction,
+            float minimumTimeInSlipstream,
+            float timeInSlipstream)
+        {
+            if (timeInSlipstream < minimumTimeInSlipstream)
+            {
+                return 0f;
+            }
+
+            var maxDist = Mathf.Max(0.01f, maxActivationDistance * kartLength);
+            if (distanceToLeader > maxDist || distanceToLeader <= 0f)
+            {
+                return 0f;
+            }
+
+            // Closer = more reduction (linear interpolation, clamped)
+            var normalizedDistance = distanceToLeader / maxDist;
+            var reduction = Mathf.Lerp(maxReduction, 0f, normalizedDistance);
+            return Mathf.Clamp(reduction, 0f, maxReduction);
+        }
+
+        /// <summary>
         /// Calculates effective braking deceleration considering rear-biased distribution,
         /// steering-induced oversteer tendency, and wheel lock threshold.
-        /// Returns: (effectiveDeceleration, oversteerFactor)
         /// </summary>
         public static void CalculateBrakingWithSteering(
             float brakeInput,
@@ -95,14 +124,12 @@ namespace RKW.Physics
                 : requestedDeceleration;
 
             // Oversteer factor: braking with steering causes rear to slide
-            // More steering + more brake + more rear distribution = more oversteer
             oversteerFactor = steeringMagnitude * brakeInput * rearBrakeDistribution *
                               Mathf.Max(0f, brakeOversteerGain);
 
             // Straight-line braking is always more effective (no oversteer penalty)
             if (steeringMagnitude > 0.01f)
             {
-                // Braking with steering: slightly longer stopping distance
                 var steeringPenalty = 1f - steeringMagnitude * 0.15f;
                 effectiveDeceleration *= Mathf.Max(0.7f, steeringPenalty);
             }
