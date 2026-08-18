@@ -3,18 +3,30 @@ using UnityEngine.InputSystem;
 
 namespace RKW.Physics
 {
+    /// <summary>
+    /// Touch + keyboard input for the kart prototype.
+    /// M2-T14: Implements virtual joystick (left side, analog steering)
+    /// and analog pedals (right side: throttle top-half, brake bottom-half).
+    /// Throttle respects the 150ms ramp in KartDynamics (not here — raw input is analog).
+    /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(KartDynamics))]
     public sealed class KartPrototypeInput : MonoBehaviour
     {
         private KartDynamics _dynamics;
-        private Rect _steerLeftTouchArea;
-        private Rect _steerRightTouchArea;
-        private Rect _throttleTouchArea;
-        private Rect _brakeTouchArea;
-        private float _steering;
-        private float _throttle;
-        private float _brake;
+
+        // Touch state
+        private int _steeringFingerId = -1;
+        private Vector2 _steeringOrigin;
+        private float _steeringValue;
+        private float _throttleValue;
+        private float _brakeValue;
+
+        // Layout
+        private const float JoystickDeadzone = 15f; // pixels
+        private const float JoystickMaxRadius = 120f; // pixels
+        private const float SteeringZoneWidthRatio = 0.40f; // left 40% of screen
+        private const float ThrottleZoneHeightRatio = 0.55f; // top 55% of right side
 
         private void Awake()
         {
@@ -23,17 +35,18 @@ namespace RKW.Physics
 
         private void Update()
         {
+            _steeringValue = 0f;
+            _throttleValue = 0f;
+            _brakeValue = 0f;
+
             ReadKeyboard();
             ReadTouches();
-            _dynamics.SetInput(_steering, _throttle, _brake);
+
+            _dynamics.SetInput(_steeringValue, _throttleValue, _brakeValue);
         }
 
         private void ReadKeyboard()
         {
-            _steering = 0f;
-            _throttle = 0f;
-            _brake = 0f;
-
             var keyboard = Keyboard.current;
             if (keyboard == null)
             {
@@ -42,22 +55,22 @@ namespace RKW.Physics
 
             if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
             {
-                _steering -= 1f;
+                _steeringValue -= 1f;
             }
 
             if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
             {
-                _steering += 1f;
+                _steeringValue += 1f;
             }
 
             if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
             {
-                _throttle = 1f;
+                _throttleValue = 1f;
             }
 
             if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed || keyboard.spaceKey.isPressed)
             {
-                _brake = 1f;
+                _brakeValue = 1f;
             }
         }
 
@@ -69,63 +82,126 @@ namespace RKW.Physics
                 return;
             }
 
-            CalculateTouchAreas();
+            var safe = Screen.safeArea;
+            var steeringZoneRight = safe.xMin + safe.width * SteeringZoneWidthRatio;
+
             foreach (var touch in touchscreen.touches)
             {
                 if (!touch.press.isPressed)
                 {
+                    // If this was the steering finger, release it
+                    if (touch.touchId.ReadValue() == _steeringFingerId)
+                    {
+                        _steeringFingerId = -1;
+                    }
                     continue;
                 }
 
                 var position = touch.position.ReadValue();
-                if (_steerLeftTouchArea.Contains(position))
+                var touchId = touch.touchId.ReadValue();
+
+                if (position.x < steeringZoneRight)
                 {
-                    _steering = -1f;
+                    // Left side: virtual joystick (analog steering)
+                    HandleSteeringTouch(touchId, position, touch.phase.ReadValue());
                 }
-                else if (_steerRightTouchArea.Contains(position))
+                else
                 {
-                    _steering = 1f;
-                }
-                else if (_throttleTouchArea.Contains(position))
-                {
-                    _throttle = 1f;
-                }
-                else if (_brakeTouchArea.Contains(position))
-                {
-                    _brake = 1f;
+                    // Right side: pedals
+                    HandlePedalTouch(position, safe);
                 }
             }
         }
 
-        private void CalculateTouchAreas()
+        private void HandleSteeringTouch(int touchId, Vector2 position,
+            UnityEngine.InputSystem.TouchPhase phase)
         {
-            var safe = Screen.safeArea;
-            _steerLeftTouchArea = new Rect(safe.xMin, safe.yMin, safe.width * 0.22f, safe.height * 0.42f);
-            _steerRightTouchArea = new Rect(safe.xMin + safe.width * 0.22f, safe.yMin,
-                safe.width * 0.22f, safe.height * 0.42f);
-            _throttleTouchArea = new Rect(safe.xMin + safe.width * 0.72f, safe.yMin + safe.height * 0.34f,
-                safe.width * 0.28f, safe.height * 0.66f);
-            _brakeTouchArea = new Rect(safe.xMin + safe.width * 0.55f, safe.yMin,
-                safe.width * 0.45f, safe.height * 0.34f);
+            if (phase == UnityEngine.InputSystem.TouchPhase.Began)
+            {
+                _steeringFingerId = touchId;
+                _steeringOrigin = position;
+            }
+
+            if (touchId != _steeringFingerId && _steeringFingerId != -1)
+            {
+                return; // different finger, ignore
+            }
+
+            if (_steeringFingerId == -1)
+            {
+                _steeringFingerId = touchId;
+                _steeringOrigin = position;
+            }
+
+            var delta = position.x - _steeringOrigin.x;
+            var absDelta = Mathf.Abs(delta);
+
+            if (absDelta < JoystickDeadzone)
+            {
+                _steeringValue = 0f;
+            }
+            else
+            {
+                var effectiveDelta = absDelta - JoystickDeadzone;
+                var maxEffective = JoystickMaxRadius - JoystickDeadzone;
+                _steeringValue = Mathf.Clamp(
+                    Mathf.Sign(delta) * (effectiveDelta / maxEffective),
+                    -1f, 1f);
+            }
+        }
+
+        private void HandlePedalTouch(Vector2 position, Rect safe)
+        {
+            var rightZoneX = safe.xMin + safe.width * SteeringZoneWidthRatio;
+            var rightZoneWidth = safe.width * (1f - SteeringZoneWidthRatio);
+            var relativeY = (position.y - safe.yMin) / safe.height;
+
+            if (relativeY > (1f - ThrottleZoneHeightRatio))
+            {
+                // Top portion: throttle (intensity based on how high the touch is)
+                var throttleRelative = (relativeY - (1f - ThrottleZoneHeightRatio)) / ThrottleZoneHeightRatio;
+                _throttleValue = Mathf.Clamp01(throttleRelative * 1.5f); // slight amplification
+            }
+            else
+            {
+                // Bottom portion: brake
+                var brakeRelative = 1f - (relativeY / (1f - ThrottleZoneHeightRatio));
+                _brakeValue = Mathf.Clamp01(brakeRelative * 1.5f);
+            }
         }
 
         private void OnGUI()
         {
-            CalculateTouchAreas();
             var safe = Screen.safeArea;
             var scale = Mathf.Max(1f, Screen.height / 720f);
             var style = new GUIStyle(GUI.skin.box)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = Mathf.RoundToInt(20f * scale),
+                fontSize = Mathf.RoundToInt(18f * scale),
                 normal = { textColor = Color.white }
             };
 
-            DrawScreenRect(_steerLeftTouchArea, "← ESQUERDA", style);
-            DrawScreenRect(_steerRightTouchArea, "DIREITA →", style);
-            DrawScreenRect(_throttleTouchArea, "ACELERAR", style);
-            DrawScreenRect(_brakeTouchArea, "FREAR / RÉ", style);
+            // Draw steering zone
+            var steerRect = new Rect(safe.xMin, Screen.height - safe.yMax,
+                safe.width * SteeringZoneWidthRatio, safe.height);
+            DrawZone(steerRect, $"DIREÇÃO\n{_steeringValue:+0.00;-0.00}", style,
+                new Color(0.2f, 0.4f, 0.8f, 0.15f));
 
+            // Draw throttle zone
+            var rightX = safe.xMin + safe.width * SteeringZoneWidthRatio;
+            var rightW = safe.width * (1f - SteeringZoneWidthRatio);
+            var throttleRect = new Rect(rightX, Screen.height - safe.yMax,
+                rightW, safe.height * ThrottleZoneHeightRatio);
+            DrawZone(throttleRect, $"ACELERAR\n{_throttleValue:0.00}", style,
+                new Color(0.2f, 0.8f, 0.2f, 0.15f));
+
+            // Draw brake zone
+            var brakeRect = new Rect(rightX, Screen.height - safe.yMax + safe.height * ThrottleZoneHeightRatio,
+                rightW, safe.height * (1f - ThrottleZoneHeightRatio));
+            DrawZone(brakeRect, $"FREAR\n{_brakeValue:0.00}", style,
+                new Color(0.8f, 0.2f, 0.2f, 0.15f));
+
+            // Speed HUD
             var hudStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(22f * scale),
@@ -137,11 +213,10 @@ namespace RKW.Physics
                 $"{motionLabel}{_dynamics.SpeedKph:0} km/h  •  grip {_dynamics.GripRatio:0.00}", hudStyle);
         }
 
-        private static void DrawScreenRect(Rect screenRect, string label, GUIStyle style)
+        private static void DrawZone(Rect guiRect, string label, GUIStyle style, Color color)
         {
-            var guiRect = new Rect(screenRect.x, Screen.height - screenRect.yMax, screenRect.width, screenRect.height);
             var previous = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, 0.18f);
+            GUI.color = color;
             GUI.Box(guiRect, label, style);
             GUI.color = previous;
         }
