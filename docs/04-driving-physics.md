@@ -200,3 +200,10 @@ graph LR
 - [Bots](./07-ai-bots.md)
 - [Multiplayer](./08-multiplayer-architecture.md)
 - [Teste de Física](./16-test-strategy.md)
+- [Protótipo M2-T01](./29-kart-dynamics-prototype.md)
+
+## Evidência inicial da M2-T01
+
+Em 2026-08-18, a primeira camada custom de dinâmica foi validada no Galaxy S25. O protótipo usa Rigidbody/PhysX para contato e uma camada C# em `FixedUpdate` de 50 Hz para forças longitudinais e laterais, aderência progressiva, transferência de peso, lift-off da roda traseira interna, coasting, drag e perda de velocidade por esterço.
+
+O fundador confirmou aceleração e frenagem funcionais, curvas previsíveis, passagem pelos obstáculos, direção adequada e ré técnica limitada a 12 km/h. Os valores permanecem hipóteses de calibração; esta aprovação confirma somente a fundação da M2-T01, não os modelos detalhados das tarefas seguintes.

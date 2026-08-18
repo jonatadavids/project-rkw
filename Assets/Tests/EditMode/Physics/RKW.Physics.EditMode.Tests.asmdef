@@ -1,18 +1,12 @@
 {
-  "name": "RKW.PlayMode.Tests",
-  "rootNamespace": "RKW.Tests.PlayMode",
+  "name": "RKW.Physics.EditMode.Tests",
+  "rootNamespace": "RKW.Physics.Tests.EditMode",
   "references": [
-    "RKW.Audio",
-    "RKW.Backend",
-    "RKW.Core",
-    "RKW.Network",
-    "RKW.Physics",
-    "RKW.UI",
-    "Unity.Localization",
-    "Unity.Services.RemoteConfig",
-    "UnityEngine.UI"
+    "RKW.Physics"
   ],
-  "includePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
