@@ -18,15 +18,63 @@ namespace RKW.Tests.PlayMode
     {
         private const int TestTimeoutSeconds = 30;
 
-        [TearDown]
-        public void TearDown()
+        [SetUp]
+        public void SetUp()
         {
+            BootstrapController.ResetTestOverrides();
+            BootstrapController.RemoteConfigFactoryOverride =
+                () => new StubRemoteConfigService();
+        }
+
+        [UnityTearDown]
+        public IEnumerator TearDown()
+        {
+            var cleanupScene = SceneManager.CreateScene(
+                $"BootstrapTestCleanup-{Guid.NewGuid():N}");
+            SceneManager.SetActiveScene(cleanupScene);
+
+            for (var index = SceneManager.sceneCount - 1; index >= 0; index--)
+            {
+                var scene = SceneManager.GetSceneAt(index);
+                if (scene == cleanupScene
+                    || !scene.isLoaded
+                    || !IsTestOwnedScene(scene.name))
+                {
+                    continue;
+                }
+
+                var unload = SceneManager.UnloadSceneAsync(scene);
+                if (unload != null)
+                {
+                    yield return unload;
+                }
+            }
+
+            // OnDestroy cancels the Bootstrap lifetime. Let continuations observe
+            // cancellation and dispose their registrations before the next test.
+            yield return null;
+            yield return null;
+
+            Assert.That(
+                UnityEngine.Object.FindObjectsByType<BootstrapController>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None),
+                Is.Empty);
             BootstrapController.ResetTestOverrides();
             var portuguese = LocalizationSettings.AvailableLocales?.GetLocale("pt-BR");
             if (portuguese != null)
             {
                 LocalizationSettings.SelectedLocale = portuguese;
             }
+        }
+
+        private static bool IsTestOwnedScene(string sceneName)
+        {
+            return sceneName == "Bootstrap"
+                || sceneName == "MainMenu"
+                || sceneName == "BootstrapDestructionTestHost"
+                || sceneName == "RemoteConfigDestructionTestHost"
+                || sceneName.StartsWith("BootstrapTestCleanup-", StringComparison.Ordinal);
         }
 
         [UnityTest]
@@ -134,6 +182,7 @@ namespace RKW.Tests.PlayMode
                 SceneManager.SetActiveScene(hostScene);
                 yield return SceneManager.UnloadSceneAsync("Bootstrap");
                 yield return WaitUntil(() => authentication.CancellationObserved);
+                yield return WaitUntil(() => authentication.OperationCompleted);
                 yield return null;
                 yield return null;
 
@@ -149,6 +198,54 @@ namespace RKW.Tests.PlayMode
                         FindObjectsSortMode.None),
                     Is.Empty);
                 Assert.That(GameObject.Find("Application"), Is.Null);
+                Assert.That(unobservedExceptionCount, Is.Zero);
+                LogAssert.NoUnexpectedReceived();
+            }
+            finally
+            {
+                TaskScheduler.UnobservedTaskException -= handler;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyingBootstrapDuringPendingRemoteConfig_CancelsWithoutLeaks()
+        {
+            var remoteConfig = new PendingRemoteConfigService();
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            BootstrapController.RemoteConfigFactoryOverride = () => remoteConfig;
+            var unobservedExceptionCount = 0;
+            System.EventHandler<UnobservedTaskExceptionEventArgs> handler = (_, eventArgs) =>
+            {
+                unobservedExceptionCount++;
+                eventArgs.SetObserved();
+            };
+            TaskScheduler.UnobservedTaskException += handler;
+
+            try
+            {
+                yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
+                yield return WaitUntil(() => remoteConfig.LoadCalls == 1);
+
+                var hostScene = SceneManager.CreateScene("RemoteConfigDestructionTestHost");
+                SceneManager.SetActiveScene(hostScene);
+                yield return SceneManager.UnloadSceneAsync("Bootstrap");
+                yield return WaitUntil(() => remoteConfig.CancellationObserved);
+                yield return WaitUntil(() => remoteConfig.OperationCompleted);
+                yield return null;
+                yield return null;
+
+                System.GC.Collect();
+                System.GC.WaitForPendingFinalizers();
+                System.GC.Collect();
+                yield return null;
+
+                Assert.That(SceneManager.GetSceneByName("MainMenu").isLoaded, Is.False);
+                Assert.That(
+                    UnityEngine.Object.FindObjectsByType<BootstrapController>(
+                        FindObjectsInactive.Include,
+                        FindObjectsSortMode.None),
+                    Is.Empty);
                 Assert.That(unobservedExceptionCount, Is.Zero);
                 LogAssert.NoUnexpectedReceived();
             }
@@ -410,17 +507,40 @@ namespace RKW.Tests.PlayMode
             public bool IsSignedIn => false;
             public int CallCount { get; private set; }
             public bool CancellationObserved { get; private set; }
+            public bool OperationCompleted { get; private set; }
 
-            public Task<bool> SignInAnonymouslyAsync(
+            public async Task<bool> SignInAnonymouslyAsync(
                 CancellationToken cancellationToken = default)
             {
                 CallCount++;
-                cancellationToken.Register(() =>
+                using (cancellationToken.Register(() =>
                 {
                     CancellationObserved = true;
                     _completion.TrySetCanceled(cancellationToken);
-                });
-                return _completion.Task;
+                }))
+                {
+                    try
+                    {
+                        return await _completion.Task;
+                    }
+                    finally
+                    {
+                        OperationCompleted = true;
+                    }
+                }
+            }
+        }
+
+        private sealed class StubRemoteConfigService : IRemoteConfigService
+        {
+            public RemoteFeatureFlags Flags { get; private set; } =
+                RemoteFeatureFlags.SafeDefaults;
+
+            public Task<RemoteFeatureFlags> LoadAsync(
+                CancellationToken cancellationToken = default)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return Task.FromResult(Flags);
             }
         }
 
@@ -432,15 +552,28 @@ namespace RKW.Tests.PlayMode
 
             public RemoteFeatureFlags Flags { get; private set; } = RemoteFeatureFlags.SafeDefaults;
             public int LoadCalls { get; private set; }
+            public bool CancellationObserved { get; private set; }
+            public bool OperationCompleted { get; private set; }
 
             public async Task<RemoteFeatureFlags> LoadAsync(
                 CancellationToken cancellationToken = default)
             {
                 LoadCalls++;
-                using (cancellationToken.Register(() => _completion.TrySetCanceled(cancellationToken)))
+                using (cancellationToken.Register(() =>
                 {
-                    Flags = await _completion.Task;
-                    return Flags;
+                    CancellationObserved = true;
+                    _completion.TrySetCanceled(cancellationToken);
+                }))
+                {
+                    try
+                    {
+                        Flags = await _completion.Task;
+                        return Flags;
+                    }
+                    finally
+                    {
+                        OperationCompleted = true;
+                    }
                 }
             }
 

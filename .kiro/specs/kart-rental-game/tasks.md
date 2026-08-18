@@ -453,7 +453,9 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
 
 > **Objetivo:** Vertical slice completo: kart dirigível em pista greybox com controles touch, start/finish line, checkpoints mínimos, TimingManagerLite (cronometragem básica + detecção de volta válida + display de tempo), validação com pilotos reais. O piloto COMPLETA uma volta cronometrada ANTES de M2 terminar.
 
-- [ ] M2-T01 Implementar KartDynamics core (Custom Physics Layer)
+- [x] M2-T01 Implementar KartDynamics core (Custom Physics Layer)
+  - **Concluída em 2026-08-18:** protótipo dirigível validado no Galaxy S25; aceleração, freio/ré técnica, direção, coasting, drag, grip progressivo, transferência lateral e lift-off implementados em `RKW.Physics`
+  - **Evidência:** testes direcionados, APK Development IL2CPP/ARM64 e validação humana documentados em `docs/29-kart-dynamics-prototype.md`; cena técnica permanece fora do fluxo Bootstrap/MainMenu
   - Criar MonoBehaviour KartDynamics em RKW.Physics
   - Implementar: modelo de pneu simplificado (grip curve vs slip angle)
   - Implementar: eixo traseiro rígido com transferência de peso lateral

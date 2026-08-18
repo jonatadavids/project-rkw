@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4df099511fb1464d8412716c4c661714, type: 3}
+  m_Name: PrototypeSchoolTuning
+  m_EditorClassIdentifier: RKW.Physics::RKW.Physics.KartCategorySO
+  categoryId: prototype-school
+  massKilograms: 165
+  centerOfMassHeightMeters: 0.22
+  wheelbaseMeters: 1.05
+  rearTrackWidthMeters: 1.05
+  maxSpeedKph: 55
+  zeroToMaxSeconds: 8
+  brakeDeceleration: 10
+  coastingDeceleration: 1.6
+  aerodynamicDrag: 0.012
+  steeringLossAcceleration: 2.5
+  throttleRampSeconds: 0.2
+  lateralGripG: 1
+  peakSlipAngleDegrees: 8
+  fullLossSlipAngleDegrees: 28
+  minimumGripRatio: 0.32
+  lateralResponse: 7
+  gripLossRate: 5
+  gripRecoveryRate: 2.5
+  maxSteeringAngleDegrees: 28
+  maximumYawRateDegrees: 105
+  yawResponse: 7
+  yawDamping: 2.5
+  weightTransferGain: 3.4
+  innerRearLiftThreshold: 0.62
+  rigidAxleGripInfluence: 0.22
+  visualWeightTransferDegrees: 4

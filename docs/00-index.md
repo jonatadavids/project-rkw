@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-Este repositório contém a documentação de engenharia e produto e a fundação Unity do jogo mobile de kart rental. Gameplay ainda não foi iniciado.
+Este repositório contém a documentação de engenharia e produto, a fundação Unity e o primeiro protótipo técnico de dirigibilidade do jogo mobile de kart rental.
 
 ---
 
@@ -39,6 +39,7 @@ Este repositório contém a documentação de engenharia e produto e a fundaçã
 | 26 | [Fundação de Localização](./26-localization-foundation.md) | Unity Localization e String Table UI de M1-T10 |
 | 27 | [Fundação de Remote Config](./27-remote-config-foundation.md) | Flags base UGS de M1-T11 |
 | 28 | [Entrada condicional no M2](./28-m1-conditional-gate.md) | Revisão do Exit Gate M1 e exceções rastreadas para M2-T01 |
+| 29 | [Protótipo de física do kart](./29-kart-dynamics-prototype.md) | Fundação simcade e validação física da M2-T01 no Galaxy S25 |
 | M1-T12 | [Resultados de Latência Photon](./spikes/photon-region-latency.md) | Snapshot de Brasília; heartbeat e duas localidades pendentes |
 
 ---
