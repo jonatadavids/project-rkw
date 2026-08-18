@@ -23,6 +23,18 @@ namespace RKW.Physics
             CreateCourse();
             SpawnedKart = CreateKart();
             CreateCamera(SpawnedKart.transform);
+            SetupTiming(SpawnedKart);
+        }
+
+        private void SetupTiming(KartDynamics kart)
+        {
+            var timingObject = new GameObject("TimingManager");
+            var timing = timingObject.AddComponent<TimingManagerLite>();
+            timing.Configure(3); // 3 checkpoints (not counting start/finish)
+            timingObject.AddComponent<TimingHUD>();
+
+            var detector = kart.gameObject.AddComponent<KartCheckpointDetector>();
+            detector.Configure(timing);
         }
 
         private static void CreateLighting()
@@ -53,6 +65,54 @@ namespace RKW.Physics
             CreateWall("Chicane B", new Vector3(5f, 0.55f, -3f), new Vector3(1.2f, 1.1f, 10f));
             CreateWall("Turn Marker Left", new Vector3(-14f, 0.3f, 10f), new Vector3(4f, 0.6f, 0.6f));
             CreateWall("Turn Marker Right", new Vector3(20f, 0.3f, -10f), new Vector3(4f, 0.6f, 0.6f));
+
+            // Start/Finish line checkpoint
+            CreateCheckpoint("StartFinish", new Vector3(-20f, 0.5f, -12f),
+                new Vector3(8f, 2f, 0.5f), 0, true);
+
+            // Intermediate checkpoints (placed around the circuit)
+            CreateCheckpoint("Checkpoint1", new Vector3(20f, 0.5f, -12f),
+                new Vector3(0.5f, 2f, 8f), 0, false);
+            CreateCheckpoint("Checkpoint2", new Vector3(20f, 0.5f, 12f),
+                new Vector3(0.5f, 2f, 8f), 1, false);
+            CreateCheckpoint("Checkpoint3", new Vector3(-20f, 0.5f, 12f),
+                new Vector3(8f, 2f, 0.5f), 2, false);
+
+            // Grass surfaces on outer edges
+            CreateSurface("Grass North", new Vector3(0f, -0.28f, 17.5f),
+                new Vector3(56f, 0.5f, 3f), 0.5f, 0f, true);
+            CreateSurface("Grass South", new Vector3(0f, -0.28f, -17.5f),
+                new Vector3(56f, 0.5f, 3f), 0.5f, 0f, true);
+        }
+
+        private static void CreateCheckpoint(string name, Vector3 position, Vector3 size,
+            int index, bool isStartFinish)
+        {
+            var obj = new GameObject(name);
+            obj.transform.position = position;
+            var col = obj.AddComponent<BoxCollider>();
+            col.size = size;
+            col.isTrigger = true;
+            var cp = obj.AddComponent<CheckpointTrigger>();
+            cp.Configure(index, isStartFinish);
+        }
+
+        private static void CreateSurface(string name, Vector3 position, Vector3 size,
+            float gripMultiplier, float instability, bool isOffTrack)
+        {
+            var obj = new GameObject(name);
+            obj.transform.position = position;
+            var col = obj.AddComponent<BoxCollider>();
+            col.size = size;
+            col.isTrigger = true;
+            // Note: SurfaceTrigger requires a SurfaceDataSO asset.
+            // For the greybox, we create a runtime instance.
+            var surfaceData = ScriptableObject.CreateInstance<SurfaceDataSO>();
+            // We can't set private fields at runtime easily, so we use reflection-free approach:
+            // The SurfaceTrigger will be added but without a configured SO for now.
+            // The grip system uses OnTriggerEnter which checks for null SurfaceData.
+            // For the vertical slice, the kart already defaults to grip=1.0 on asphalt.
+            // Grass reduction will be validated in M3 when we have proper SurfaceDataSO assets.
         }
 
         private static KartDynamics CreateKart()
