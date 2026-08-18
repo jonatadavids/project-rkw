@@ -15,6 +15,9 @@ namespace RKW.Physics
         private float _brakeInput;
         private float _smoothedThrottle;
         private float _currentGripRatio = 1f;
+        private float _surfaceGripMultiplier = 1f;
+        private float _surfaceInstability;
+        private SurfaceDataSO _currentSurface;
 
         public float SpeedKph { get; private set; }
         public float SignedForwardSpeedKph { get; private set; }
@@ -23,6 +26,8 @@ namespace RKW.Physics
         public float LateralWeightTransferRatio { get; private set; }
         public float InnerRearLift { get; private set; }
         public float BrakeOversteerFactor { get; private set; }
+        public float SurfaceGripMultiplier => _surfaceGripMultiplier;
+        public SurfaceDataSO CurrentSurface => _currentSurface;
         public KartCategorySO Tuning => tuning;
 
         public void Configure(KartCategorySO category, Transform kartVisual = null)
@@ -62,6 +67,7 @@ namespace RKW.Physics
             ApplyLongitudinalForces(forwardSpeed);
             ApplyLateralForces(localVelocity, deltaTime);
             ApplySteering(forwardSpeed);
+            ApplyInstability(forwardSpeed);
             EnforceSpeedLimit();
         }
 
@@ -176,7 +182,8 @@ namespace RKW.Physics
             var brakeOversteerReduction = 1f - BrakeOversteerFactor * 0.3f; // braking with steering reduces grip
             var maximumLateralAcceleration = tuning.LateralGripG * KartDynamicsMath.Gravity *
                                              _currentGripRatio * rigidAxleRelease *
-                                             Mathf.Max(0.4f, brakeOversteerReduction);
+                                             Mathf.Max(0.4f, brakeOversteerReduction) *
+                                             _surfaceGripMultiplier;
             var requestedAcceleration = -localVelocity.x * tuning.LateralResponse;
             var lateralAcceleration = Mathf.Clamp(
                 requestedAcceleration,
@@ -195,6 +202,20 @@ namespace RKW.Physics
             var yawAcceleration = (targetYawRate - currentYawRate) * tuning.YawResponse -
                                   currentYawRate * tuning.YawDamping;
             _body.AddRelativeTorque(Vector3.up * (yawAcceleration * Mathf.Deg2Rad), ForceMode.Acceleration);
+        }
+
+        private void ApplyInstability(float forwardSpeed)
+        {
+            if (_surfaceInstability <= 0f || Mathf.Abs(forwardSpeed) < 1f)
+            {
+                return;
+            }
+
+            // Instability proportional to speed, surface factor, and a pseudo-random perturbation
+            var speedFactor = Mathf.Clamp01(Mathf.Abs(forwardSpeed) / tuning.MaxSpeedMetersPerSecond);
+            var perturbation = Mathf.Sin(Time.fixedTime * 37f + transform.position.x * 7f) *
+                               _surfaceInstability * speedFactor * 15f;
+            _body.AddRelativeTorque(Vector3.up * (perturbation * Mathf.Deg2Rad), ForceMode.Acceleration);
         }
 
         private void EnforceSpeedLimit()
@@ -226,6 +247,33 @@ namespace RKW.Physics
             _body.interpolation = RigidbodyInterpolation.Interpolate;
             _body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            var surface = other.GetComponent<SurfaceTrigger>();
+            if (surface == null || surface.SurfaceData == null)
+            {
+                return;
+            }
+
+            _currentSurface = surface.SurfaceData;
+            _surfaceGripMultiplier = surface.SurfaceData.GripMultiplier;
+            _surfaceInstability = surface.SurfaceData.InstabilityFactor;
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            var surface = other.GetComponent<SurfaceTrigger>();
+            if (surface == null || surface.SurfaceData != _currentSurface)
+            {
+                return;
+            }
+
+            // Return to default asphalt when leaving a non-asphalt surface
+            _currentSurface = null;
+            _surfaceGripMultiplier = 1f;
+            _surfaceInstability = 0f;
         }
     }
 }
