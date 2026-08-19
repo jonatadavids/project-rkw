@@ -136,11 +136,17 @@ namespace RKW.Physics
 
         private static Material CreateMaterial(string name, Color color)
         {
-            // Use Sprites/Default which is always included in builds
-            var shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("UI/Default");
-            if (shader == null) shader = Shader.Find("Hidden/InternalColored");
-            var mat = new Material(shader) { color = color };
+            // Primitives already have a default material. We create a new instance
+            // and just set the color. This works regardless of shader stripping.
+            var mat = new Material(Shader.Find("Unlit/Color"));
+            if (mat.shader == null || mat.shader.name == "Hidden/InternalErrorShader")
+            {
+                // Absolute fallback: create from any available shader on the primitive
+                var tempPrim = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                mat = new Material(tempPrim.GetComponent<Renderer>().sharedMaterial);
+                DestroyImmediate(tempPrim);
+            }
+            mat.color = color;
             mat.name = name;
             return mat;
         }
