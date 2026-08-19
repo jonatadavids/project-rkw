@@ -134,21 +134,54 @@ namespace RKW.Physics
             piece.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
         }
 
+        private const string BaseMaterialResourcePath = "KartPhysics/BaseURPLit";
         private static Material _baseMaterial;
 
         private static Material CreateMaterial(string name, Color color)
         {
             if (_baseMaterial == null)
             {
-                // Get the shader from a primitive - this is the only reliable way
-                // in stripped IL2CPP builds where Shader.Find returns null
-                var temp = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                _baseMaterial = temp.GetComponent<Renderer>().sharedMaterial;
-                DestroyImmediate(temp);
+                // Load an explicit Material asset from Resources. This is the
+                // reliable option for IL2CPP/Android: the shader it references
+                // ships because the asset itself is a real project asset (not
+                // just a runtime-only reference), so the build's shader
+                // variant stripping keeps the variants it actually needs.
+                // Grabbing sharedMaterial off a runtime-created primitive was
+                // tried first but still produced the missing-shader magenta
+                // fallback in device builds, so don't fall back to that path.
+                _baseMaterial = Resources.Load<Material>(BaseMaterialResourcePath);
+
+                if (_baseMaterial == null)
+                {
+                    Debug.LogError($"KartPhysicsPrototypeBootstrap: could not load '{BaseMaterialResourcePath}' " +
+                        "from Resources. Materials will render with the engine's missing-shader fallback (pink).");
+                    var temp = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                    _baseMaterial = temp.GetComponent<Renderer>().sharedMaterial;
+                    DestroyImmediate(temp);
+                }
             }
             var mat = new Material(_baseMaterial);
-            mat.color = color;
             mat.name = name;
+
+            // IL2CPP Android builds: Material.color relies on the shader's
+            // "main color" metadata being resolved at runtime, which is
+            // unreliable in stripped builds and results in materials
+            // rendering with the shader's default (hot pink) color.
+            // URP/Lit exposes the color via the _BaseColor property, so set
+            // it explicitly (falling back to _Color for non-URP shaders).
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", color);
+            }
+            else if (mat.HasProperty("_Color"))
+            {
+                mat.SetColor("_Color", color);
+            }
+            else
+            {
+                mat.color = color;
+            }
+
             return mat;
         }
 
