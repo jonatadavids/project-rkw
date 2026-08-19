@@ -781,10 +781,10 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Dependências: M3-T05_
 
 - [ ] M3-T07 Implementar telemetria de performance (FPS, memória, thermal)
-  - Coletar FPS a cada frame (rolling average)
-  - Coletar memória usada (Profiler.GetTotalAllocatedMemoryLong)
-  - Integrar Thermal Status API quando disponível (categorias: nominal/light/moderate/severe/critical)
-  - Enviar amostras periódicas via Unity Analytics
+  - [x] Coletar FPS a cada frame (rolling average)
+  - [x] Coletar memória usada (Profiler.GetTotalAllocatedMemoryLong)
+  - [x] Integrar Thermal Status API quando disponível (categorias: nominal/light/moderate/severe/critical)
+  - [ ] Enviar amostras periódicas via Unity Analytics — **bloqueado, ver nota abaixo**
   - _Requirements: R12.4_
   - _Dependências: M1-T01_
   - _Critério de conclusão: Dados de FPS/memória/thermal visíveis no profiler e enviados_
@@ -793,6 +793,21 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: não_
   - _Ambiente: Unity Editor + Android real_
   - _Risco: Baixo — Thermal API pode não estar disponível em todos dispositivos_
+  - _Nota: `RKW.Telemetry` implementado e verificado em dispositivo real (Galaxy
+    S25) — `FpsRollingAverage`, `ProfilerMemorySampler`,
+    `AndroidThermalStatusProvider` (PowerManager.getCurrentThermalStatus,
+    API 29+, fallback seguro para Unknown fora do Android/API < 29) e
+    `PerformanceTelemetryCollector`, todos com EditMode tests (27 testes;
+    suíte completa 148/148). Amostras hoje só vão para
+    `LogTelemetrySink` (log estruturado, confirmado em `adb logcat`).
+    **Não** adicionei o pacote de Unity Analytics/UGS Analytics: isso seria
+    uma dependência nova sem ADR (regra 5 do AGENTS.md), e
+    `docs/13-analytics-telemetry.md` já registra Q-AN-01 em aberto ("Usar
+    Unity Analytics ou migrar para Amplitude/Mixpanel?") — decisão do
+    fundador. A interface `ITelemetrySink` já está pronta para receber o
+    sink real assim que essa decisão for tomada; ver comentário em
+    `Assets/RKW/Telemetry/ITelemetrySink.cs`. Caixa principal deixada
+    desmarcada até essa última parte ser resolvida.
 
 - [ ] M3-T08 Performance test em dispositivo Android real
   - Gerar build para dispositivo low-tier da matriz (M0-T05)
