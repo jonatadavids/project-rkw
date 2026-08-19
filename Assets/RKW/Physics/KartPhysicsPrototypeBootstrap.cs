@@ -187,38 +187,23 @@ namespace RKW.Physics
             body.linearDamping = 0.02f;
             body.angularDamping = 0.6f;
 
-            // Try to load Kenney kart model
-            var kartPrefab = Resources.Load<GameObject>("KartPhysics/Models/kart-oobi");
-            GameObject visual;
-            if (kartPrefab != null)
-            {
-                visual = Instantiate(kartPrefab, root.transform);
-                visual.name = "Kart Visual (Kenney)";
-                visual.transform.localPosition = new Vector3(0f, -0.1f, 0f);
-                visual.transform.localRotation = Quaternion.identity;
-                visual.transform.localScale = Vector3.one * 0.7f;
-                // Remove any colliders from the visual model (MeshCollider may not exist in build)
-                foreach (var col in visual.GetComponentsInChildren<Collider>(true))
-                {
-                    DestroyImmediate(col);
-                }
-                // Remove any Rigidbody from model
-                foreach (var rb in visual.GetComponentsInChildren<Rigidbody>(true))
-                {
-                    DestroyImmediate(rb);
-                }
-            }
-            else
-            {
-                // Fallback: colored cube
-                visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                visual.name = "Kart Visual";
-                visual.transform.SetParent(root.transform, false);
-                visual.transform.localScale = new Vector3(1.0f, 0.4f, 1.8f);
-                var renderer = visual.GetComponent<Renderer>();
-                renderer.sharedMaterial = CreateMaterial("KartBlue", new Color(0.2f, 0.4f, 0.9f));
-                DestroyImmediate(visual.GetComponent<Collider>());
-            }
+            // Use simple colored primitive for now (Kenney FBX causes MeshCollider stripping issues)
+            // TODO: Create proper prefab from FBX in Editor with colliders removed for M3-T01 final
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "Kart Visual";
+            visual.transform.SetParent(root.transform, false);
+            visual.transform.localScale = new Vector3(1.0f, 0.35f, 1.8f);
+            visual.GetComponent<Renderer>().sharedMaterial = CreateMaterial("KartBlue", new Color(0.15f, 0.35f, 0.85f));
+            DestroyImmediate(visual.GetComponent<Collider>());
+
+            // Add a nose piece for visual direction
+            var nose = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            nose.name = "Kart Nose";
+            nose.transform.SetParent(visual.transform, false);
+            nose.transform.localPosition = new Vector3(0f, 0.08f, 0.85f);
+            nose.transform.localScale = new Vector3(0.55f, 0.5f, 0.35f);
+            nose.GetComponent<Renderer>().sharedMaterial = CreateMaterial("KartYellow", new Color(0.95f, 0.75f, 0.1f));
+            DestroyImmediate(nose.GetComponent<Collider>());
 
             var dynamics = root.AddComponent<KartDynamics>();
             var tuning = Resources.Load<KartCategorySO>(TuningResourcePath);
