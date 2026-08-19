@@ -53,36 +53,94 @@ namespace RKW.Physics
 
         private static void CreateCourse()
         {
-            CreatePrimitive("Asphalt", PrimitiveType.Cube, new Vector3(0f, -0.3f, 0f),
-                new Vector3(58f, 0.5f, 38f), "KartPhysics/Materials/Asphalt");
+            // --- GROUND (grass) ---
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "Grass Ground";
+            ground.transform.position = new Vector3(0f, -0.05f, 0f);
+            ground.transform.localScale = new Vector3(15f, 1f, 12f);
+            ground.GetComponent<Renderer>().sharedMaterial = CreateMaterial("Grass", new Color(0.25f, 0.55f, 0.18f));
+            ground.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
 
-            CreateWall("North Boundary", new Vector3(0f, 0.75f, 19f), new Vector3(60f, 1.5f, 0.5f));
-            CreateWall("South Boundary", new Vector3(0f, 0.75f, -19f), new Vector3(60f, 1.5f, 0.5f));
-            CreateWall("East Boundary", new Vector3(29f, 0.75f, 0f), new Vector3(0.5f, 1.5f, 38f));
-            CreateWall("West Boundary", new Vector3(-29f, 0.75f, 0f), new Vector3(0.5f, 1.5f, 38f));
+            // --- TRACK SURFACE ---
+            // Simple oval: two straights connected by semicircles
+            // Layout: ~80m x 40m oval, track width 6m
+            var asphaltMat = CreateMaterial("Asphalt", new Color(0.22f, 0.22f, 0.25f));
+            var curbMat = CreateMaterial("Curb", new Color(0.9f, 0.15f, 0.15f));
+            var whiteMat = CreateMaterial("White", new Color(0.95f, 0.95f, 0.95f));
 
-            CreateWall("Chicane A", new Vector3(-5f, 0.55f, 3f), new Vector3(1.2f, 1.1f, 10f));
-            CreateWall("Chicane B", new Vector3(5f, 0.55f, -3f), new Vector3(1.2f, 1.1f, 10f));
-            CreateWall("Turn Marker Left", new Vector3(-14f, 0.3f, 10f), new Vector3(4f, 0.6f, 0.6f));
-            CreateWall("Turn Marker Right", new Vector3(20f, 0.3f, -10f), new Vector3(4f, 0.6f, 0.6f));
+            // Main straight (south side)
+            CreateTrackPiece("Straight_Main", new Vector3(0f, 0f, -15f), new Vector3(70f, 0.12f, 7f), asphaltMat);
+            // Back straight (north side)
+            CreateTrackPiece("Straight_Back", new Vector3(0f, 0f, 15f), new Vector3(70f, 0.12f, 7f), asphaltMat);
+            // Left connection
+            CreateTrackPiece("Straight_Left", new Vector3(-35f, 0f, 0f), new Vector3(7f, 0.12f, 37f), asphaltMat);
+            // Right connection
+            CreateTrackPiece("Straight_Right", new Vector3(35f, 0f, 0f), new Vector3(7f, 0.12f, 37f), asphaltMat);
 
-            // Start/Finish line checkpoint
-            CreateCheckpoint("StartFinish", new Vector3(-20f, 0.5f, -12f),
-                new Vector3(8f, 2f, 0.5f), 0, true);
+            // Corner fills (approximate circular corners with angled pieces)
+            CreateTrackPiece("Corner_NE", new Vector3(30f, 0f, 12f), new Vector3(17f, 0.12f, 13f), asphaltMat);
+            CreateTrackPiece("Corner_NW", new Vector3(-30f, 0f, 12f), new Vector3(17f, 0.12f, 13f), asphaltMat);
+            CreateTrackPiece("Corner_SE", new Vector3(30f, 0f, -12f), new Vector3(17f, 0.12f, 13f), asphaltMat);
+            CreateTrackPiece("Corner_SW", new Vector3(-30f, 0f, -12f), new Vector3(17f, 0.12f, 13f), asphaltMat);
 
-            // Intermediate checkpoints (placed around the circuit)
-            CreateCheckpoint("Checkpoint1", new Vector3(20f, 0.5f, -12f),
-                new Vector3(0.5f, 2f, 8f), 0, false);
-            CreateCheckpoint("Checkpoint2", new Vector3(20f, 0.5f, 12f),
-                new Vector3(0.5f, 2f, 8f), 1, false);
-            CreateCheckpoint("Checkpoint3", new Vector3(-20f, 0.5f, 12f),
-                new Vector3(8f, 2f, 0.5f), 2, false);
+            // --- CURBS (zebras) ---
+            // Inner curbs at corners
+            CreateTrackPiece("Curb_NE_Inner", new Vector3(28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat);
+            CreateTrackPiece("Curb_NW_Inner", new Vector3(-28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat);
+            CreateTrackPiece("Curb_SE_Inner", new Vector3(28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat);
+            CreateTrackPiece("Curb_SW_Inner", new Vector3(-28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat);
 
-            // Grass surfaces on outer edges
-            CreateSurface("Grass North", new Vector3(0f, -0.28f, 17.5f),
-                new Vector3(56f, 0.5f, 3f), 0.5f, 0f, true);
-            CreateSurface("Grass South", new Vector3(0f, -0.28f, -17.5f),
-                new Vector3(56f, 0.5f, 3f), 0.5f, 0f, true);
+            // --- CHICANE (on back straight) ---
+            CreateWall("Chicane_L", new Vector3(-5f, 0.4f, 14f), new Vector3(1.5f, 0.8f, 4f));
+            CreateWall("Chicane_R", new Vector3(5f, 0.4f, 16f), new Vector3(1.5f, 0.8f, 4f));
+
+            // --- BARRIERS (outer walls) ---
+            // Outer barriers
+            CreateWall("Barrier_S_Outer", new Vector3(0f, 0.5f, -19.5f), new Vector3(72f, 1f, 0.5f));
+            CreateWall("Barrier_N_Outer", new Vector3(0f, 0.5f, 19.5f), new Vector3(72f, 1f, 0.5f));
+            CreateWall("Barrier_E_Outer", new Vector3(39f, 0.5f, 0f), new Vector3(0.5f, 1f, 40f));
+            CreateWall("Barrier_W_Outer", new Vector3(-39f, 0.5f, 0f), new Vector3(0.5f, 1f, 40f));
+
+            // Inner barriers (oval center)
+            CreateWall("Barrier_Inner_N", new Vector3(0f, 0.4f, 11f), new Vector3(52f, 0.8f, 0.4f));
+            CreateWall("Barrier_Inner_S", new Vector3(0f, 0.4f, -11f), new Vector3(52f, 0.8f, 0.4f));
+            CreateWall("Barrier_Inner_E", new Vector3(26f, 0.4f, 0f), new Vector3(0.4f, 0.8f, 22f));
+            CreateWall("Barrier_Inner_W", new Vector3(-26f, 0.4f, 0f), new Vector3(0.4f, 0.8f, 22f));
+
+            // --- START/FINISH LINE ---
+            CreateTrackPiece("StartFinish_Line", new Vector3(-10f, 0.13f, -15f), new Vector3(0.3f, 0.02f, 7f), whiteMat);
+
+            // --- GRASS SURFACE TRIGGERS (inside and outside) ---
+            CreateSurface("Grass_Inner", new Vector3(0f, -0.01f, 0f), new Vector3(50f, 0.5f, 20f), 0.5f, 0f, true);
+
+            // --- CHECKPOINTS (triggers spanning track width) ---
+            // Start/Finish
+            CreateCheckpoint("StartFinish", new Vector3(-10f, 1f, -15f), new Vector3(0.5f, 3f, 8f), 0, true);
+            // Checkpoint 1: end of main straight (before turn 1)
+            CreateCheckpoint("CP1", new Vector3(30f, 1f, -15f), new Vector3(0.5f, 3f, 8f), 0, false);
+            // Checkpoint 2: back straight
+            CreateCheckpoint("CP2", new Vector3(0f, 1f, 15f), new Vector3(0.5f, 3f, 8f), 1, false);
+            // Checkpoint 3: before turn 3 (west side)
+            CreateCheckpoint("CP3", new Vector3(-30f, 1f, 0f), new Vector3(8f, 3f, 0.5f), 2, false);
+        }
+
+        private static void CreateTrackPiece(string name, Vector3 position, Vector3 scale, Material material)
+        {
+            var piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            piece.name = name;
+            piece.transform.position = position;
+            piece.transform.localScale = scale;
+            piece.GetComponent<Renderer>().sharedMaterial = material;
+            piece.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
+        }
+
+        private static Material CreateMaterial(string name, Color color)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Standard");
+            var mat = new Material(shader) { color = color };
+            mat.name = name;
+            return mat;
         }
 
         private static void CreateCheckpoint(string name, Vector3 position, Vector3 size,
@@ -118,24 +176,46 @@ namespace RKW.Physics
         private static KartDynamics CreateKart()
         {
             var root = new GameObject("Prototype Kart");
-            root.transform.SetPositionAndRotation(new Vector3(-20f, 0.55f, -8f), Quaternion.identity);
+            root.transform.SetPositionAndRotation(new Vector3(-15f, 0.55f, -15f), Quaternion.Euler(0f, 90f, 0f));
             var collider = root.AddComponent<BoxCollider>();
-            collider.size = new Vector3(1.25f, 0.5f, 2f);
+            collider.size = new Vector3(1.0f, 0.5f, 1.8f);
+            collider.center = new Vector3(0f, 0.25f, 0f);
             collider.sharedMaterial = GetLowFrictionMaterial();
             var body = root.AddComponent<Rigidbody>();
             body.linearDamping = 0.02f;
             body.angularDamping = 0.6f;
 
-            var visual = CreatePrimitive("Kart Visual", PrimitiveType.Cube, Vector3.zero,
-                new Vector3(1.2f, 0.45f, 1.9f), "KartPhysics/Materials/KartBlue");
-            Destroy(visual.GetComponent<Collider>());
-            visual.transform.SetParent(root.transform, false);
+            // Try to load Kenney kart model
+            var kartPrefab = Resources.Load<GameObject>("KartPhysics/Models/kart-oobi");
+            GameObject visual;
+            if (kartPrefab != null)
+            {
+                visual = Instantiate(kartPrefab, root.transform);
+                visual.name = "Kart Visual (Kenney)";
+                visual.transform.localPosition = new Vector3(0f, -0.1f, 0f);
+                visual.transform.localRotation = Quaternion.identity;
+                // Kenney karts are small, scale up to match our physics
+                visual.transform.localScale = Vector3.one * 0.7f;
+                // Remove any colliders from the visual model
+                foreach (var col in visual.GetComponentsInChildren<Collider>())
+                {
+                    Destroy(col);
+                }
+            }
+            else
+            {
+                // Fallback: colored cube if model not found
+                visual = CreatePrimitive("Kart Visual", PrimitiveType.Cube, Vector3.zero,
+                    new Vector3(1.0f, 0.4f, 1.8f), "KartPhysics/Materials/KartBlue");
+                Destroy(visual.GetComponent<Collider>());
+                visual.transform.SetParent(root.transform, false);
 
-            var nose = CreatePrimitive("Kart Nose", PrimitiveType.Cube, Vector3.zero,
-                new Vector3(0.75f, 0.25f, 0.7f), "KartPhysics/Materials/KartYellow");
-            Destroy(nose.GetComponent<Collider>());
-            nose.transform.SetParent(visual.transform, false);
-            nose.transform.localPosition = new Vector3(0f, 0.1f, 1.05f);
+                var nose = CreatePrimitive("Kart Nose", PrimitiveType.Cube, Vector3.zero,
+                    new Vector3(0.6f, 0.2f, 0.5f), "KartPhysics/Materials/KartYellow");
+                Destroy(nose.GetComponent<Collider>());
+                nose.transform.SetParent(visual.transform, false);
+                nose.transform.localPosition = new Vector3(0f, 0.1f, 0.95f);
+            }
 
             var dynamics = root.AddComponent<KartDynamics>();
             var tuning = Resources.Load<KartCategorySO>(TuningResourcePath);
