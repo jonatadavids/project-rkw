@@ -1,11 +1,7 @@
 {
-  "name": "RKW.Physics",
-  "rootNamespace": "RKW.Physics",
-  "references": [
-    "RKW.Track",
-    "Unity.InputSystem",
-    "Unity.RenderPipelines.Universal.Runtime"
-  ],
+  "name": "RKW.Track",
+  "rootNamespace": "RKW.Track",
+  "references": [],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

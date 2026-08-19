@@ -1,0 +1,148 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af579ce22a534d7abd35ea90fd7fb56d, type: 3}
+  m_Name: OvalMvpTrackConfiguration
+  m_EditorClassIdentifier: RKW.Track::RKW.Track.TrackConfigurationSO
+  trackConfigurationId: oval-mvp-cw
+  trackId: oval-mvp
+  displayName: Oval MVP (Clockwise)
+  direction: 0
+  gridSlots:
+  - position: 1
+    worldPosition: {x: -16, y: 0.5, z: -14.2}
+    yawDegrees: 90
+  - position: 2
+    worldPosition: {x: -18, y: 0.5, z: -15.8}
+    yawDegrees: 90
+  - position: 3
+    worldPosition: {x: -20, y: 0.5, z: -14.2}
+    yawDegrees: 90
+  - position: 4
+    worldPosition: {x: -22, y: 0.5, z: -15.8}
+    yawDegrees: 90
+  - position: 5
+    worldPosition: {x: -24, y: 0.5, z: -14.2}
+    yawDegrees: 90
+  - position: 6
+    worldPosition: {x: -26, y: 0.5, z: -15.8}
+    yawDegrees: 90
+  - position: 7
+    worldPosition: {x: -28, y: 0.5, z: -14.2}
+    yawDegrees: 90
+  - position: 8
+    worldPosition: {x: -30, y: 0.5, z: -15.8}
+    yawDegrees: 90
+  - position: 9
+    worldPosition: {x: -32, y: 0.5, z: -14.2}
+    yawDegrees: 90
+  - position: 10
+    worldPosition: {x: -34, y: 0.5, z: -15.8}
+    yawDegrees: 90
+  startLineId: StartFinish
+  finishLineId: StartFinish
+  pitEntryId: PitEntry_MVP
+  pitExitId: PitExit_MVP
+  checkpoints:
+  - checkpointId: StartFinish
+    sectorIndex: 0
+    isStartFinish: 1
+    worldPosition: {x: -10, y: 1, z: -15}
+    size: {x: 0.5, y: 3, z: 8}
+  - checkpointId: CP1
+    sectorIndex: 0
+    isStartFinish: 0
+    worldPosition: {x: 30, y: 1, z: -15}
+    size: {x: 0.5, y: 3, z: 8}
+  - checkpointId: CP2
+    sectorIndex: 1
+    isStartFinish: 0
+    worldPosition: {x: 0, y: 1, z: 15}
+    size: {x: 0.5, y: 3, z: 8}
+  - checkpointId: CP3
+    sectorIndex: 2
+    isStartFinish: 0
+    worldPosition: {x: -30, y: 1, z: 0}
+    size: {x: 8, y: 3, z: 0.5}
+  timingSectorCount: 3
+  racingSplinePoints:
+  - {x: -15, y: 0.5, z: -15}
+  - {x: 30, y: 0.5, z: -15}
+  - {x: 35, y: 0.5, z: 0}
+  - {x: 30, y: 0.5, z: 15}
+  - {x: -30, y: 0.5, z: 15}
+  - {x: -35, y: 0.5, z: 0}
+  - {x: -30, y: 0.5, z: -15}
+  - {x: -15, y: 0.5, z: -15}
+  idealLinePoints:
+  - {x: -15, y: 0.5, z: -15}
+  - {x: 30, y: 0.5, z: -15}
+  - {x: 35, y: 0.5, z: 0}
+  - {x: 30, y: 0.5, z: 15}
+  - {x: -30, y: 0.5, z: 15}
+  - {x: -35, y: 0.5, z: 0}
+  - {x: -30, y: 0.5, z: -15}
+  - {x: -15, y: 0.5, z: -15}
+  brakingPoints:
+  - pointId: Brake_T1
+    worldPosition: {x: 24, y: 0.5, z: -15}
+  - pointId: Brake_T2
+    worldPosition: {x: 35, y: 0.5, z: 9}
+  - pointId: Brake_T3
+    worldPosition: {x: -24, y: 0.5, z: 15}
+  - pointId: Brake_T4
+    worldPosition: {x: -35, y: 0.5, z: -9}
+  botPathPoints:
+  - {x: -15, y: 0.5, z: -15}
+  - {x: 30, y: 0.5, z: -15}
+  - {x: 35, y: 0.5, z: 0}
+  - {x: 30, y: 0.5, z: 15}
+  - {x: -30, y: 0.5, z: 15}
+  - {x: -35, y: 0.5, z: 0}
+  - {x: -30, y: 0.5, z: -15}
+  - {x: -15, y: 0.5, z: -15}
+  trackWidthMeters: 7
+  marshalPosts:
+  - pointId: Marshal_T1
+    worldPosition: {x: 40, y: 0.5, z: -15}
+  - pointId: Marshal_T2
+    worldPosition: {x: 40, y: 0.5, z: 15}
+  - pointId: Marshal_T3
+    worldPosition: {x: -40, y: 0.5, z: 15}
+  - pointId: Marshal_T4
+    worldPosition: {x: -40, y: 0.5, z: -15}
+  signalPosts:
+  - pointId: Signal_StartFinish
+    worldPosition: {x: -10, y: 2, z: -19}
+  - pointId: Signal_T2
+    worldPosition: {x: 40, y: 2, z: 0}
+  - pointId: Signal_Back
+    worldPosition: {x: 0, y: 2, z: 19}
+  - pointId: Signal_T4
+    worldPosition: {x: -40, y: 2, z: 0}
+  escapeAreas:
+  - areaId: EscapeArea_Main
+    center: {x: 0, y: 0, z: -19.5}
+    size: {x: 72, y: 1, z: 3}
+  - areaId: EscapeArea_Back
+    center: {x: 0, y: 0, z: 19.5}
+    size: {x: 72, y: 1, z: 3}
+  - areaId: EscapeArea_East
+    center: {x: 39, y: 0, z: 0}
+    size: {x: 3, y: 1, z: 40}
+  - areaId: EscapeArea_West
+    center: {x: -39, y: 0, z: 0}
+    size: {x: 3, y: 1, z: 40}
+  recoveryPoints:
+  - pointId: Recovery_Main
+    worldPosition: {x: 0, y: 0.5, z: -15}
+  - pointId: Recovery_Back
+    worldPosition: {x: 0, y: 0.5, z: 15}

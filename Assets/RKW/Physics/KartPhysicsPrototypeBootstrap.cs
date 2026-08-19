@@ -1,3 +1,4 @@
+using RKW.Track;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
@@ -19,11 +20,42 @@ namespace RKW.Physics
             }
 
             UnityEngine.Physics.gravity = new Vector3(0f, -9.81f, 0f);
+            LoadTrackConfiguration();
             CreateLighting();
             CreateCourse();
             SpawnedKart = CreateKart();
             CreateCamera(SpawnedKart.transform);
             SetupTiming(SpawnedKart);
+        }
+
+        /// <summary>
+        /// M3-T02: loads the TrackConfigurationSO at runtime so it is exercised
+        /// outside of EditMode tests too. Read-only for now — the greybox oval
+        /// geometry below is still generated procedurally, not yet driven by
+        /// this configuration's grid/checkpoint/spline data. Wiring that up is
+        /// a separate, deliberate follow-up so it does not risk the already
+        /// verified-on-device track generation in CreateCourse().
+        /// </summary>
+        private static void LoadTrackConfiguration()
+        {
+            var trackConfiguration = Resources.Load<TrackConfigurationSO>("Track/OvalMvpTrackConfiguration");
+            if (trackConfiguration == null)
+            {
+                Debug.LogWarning("KartPhysicsPrototypeBootstrap: no TrackConfigurationSO found at " +
+                    "Resources/Track/OvalMvpTrackConfiguration.");
+                return;
+            }
+
+            if (!trackConfiguration.IsValid(out var reason))
+            {
+                Debug.LogWarning("KartPhysicsPrototypeBootstrap: TrackConfigurationSO " +
+                    $"'{trackConfiguration.TrackConfigurationId}' failed validation: {reason}");
+                return;
+            }
+
+            Debug.Log("KartPhysicsPrototypeBootstrap: loaded track configuration " +
+                $"'{trackConfiguration.TrackConfigurationId}' ({trackConfiguration.DisplayName}), " +
+                $"direction={trackConfiguration.Direction}, grid slots={trackConfiguration.GridSlots.Count}.");
         }
 
         private void SetupTiming(KartDynamics kart)

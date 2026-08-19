@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ba8802d6ca1469fa7bb05fc932f9b7f, type: 3}
+  m_Name: DayEnvironmentPreset
+  m_EditorClassIdentifier: RKW.Track::RKW.Track.EnvironmentPresetSO
+  presetId: day
+  displayName: Dia
+  usesBakedLighting: 1
+  directionalLightColor: {r: 1, g: 1, b: 1, a: 1}
+  directionalLightIntensity: 1.1
+  directionalLightRotationEuler: {x: 45, y: -35, z: 0}
+  hasSpotlights: 0
+  ambientSkyColor: {r: 0.5, g: 0.6, b: 0.7, a: 1}
+  reflectionIntensity: 1
+  exposureCompensation: 0
+  shadowsEnabled: 1
+  postProcessingProfileId: default
+  crowdDensity: 0
+  visibilityDistanceMeters: 500
+  ambientAudioClip: {fileID: 0}
+  performanceBudgets:
+  - qualityTier: Low
+    maxDrawCalls: 100
+    targetFps: 30
+  - qualityTier: Medium
+    maxDrawCalls: 200
+    targetFps: 60
+  - qualityTier: High
+    maxDrawCalls: 350
+    targetFps: 60
