@@ -136,8 +136,10 @@ namespace RKW.Physics
 
         private static Material CreateMaterial(string name, Color color)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
+            // Use Sprites/Default which is always included in builds
+            var shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("UI/Default");
+            if (shader == null) shader = Shader.Find("Hidden/InternalColored");
             var mat = new Material(shader) { color = color };
             mat.name = name;
             return mat;
@@ -194,27 +196,28 @@ namespace RKW.Physics
                 visual.name = "Kart Visual (Kenney)";
                 visual.transform.localPosition = new Vector3(0f, -0.1f, 0f);
                 visual.transform.localRotation = Quaternion.identity;
-                // Kenney karts are small, scale up to match our physics
                 visual.transform.localScale = Vector3.one * 0.7f;
-                // Remove any colliders from the visual model
-                foreach (var col in visual.GetComponentsInChildren<Collider>())
+                // Remove any colliders from the visual model (MeshCollider may not exist in build)
+                foreach (var col in visual.GetComponentsInChildren<Collider>(true))
                 {
-                    Destroy(col);
+                    DestroyImmediate(col);
+                }
+                // Remove any Rigidbody from model
+                foreach (var rb in visual.GetComponentsInChildren<Rigidbody>(true))
+                {
+                    DestroyImmediate(rb);
                 }
             }
             else
             {
-                // Fallback: colored cube if model not found
-                visual = CreatePrimitive("Kart Visual", PrimitiveType.Cube, Vector3.zero,
-                    new Vector3(1.0f, 0.4f, 1.8f), "KartPhysics/Materials/KartBlue");
-                Destroy(visual.GetComponent<Collider>());
+                // Fallback: colored cube
+                visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                visual.name = "Kart Visual";
                 visual.transform.SetParent(root.transform, false);
-
-                var nose = CreatePrimitive("Kart Nose", PrimitiveType.Cube, Vector3.zero,
-                    new Vector3(0.6f, 0.2f, 0.5f), "KartPhysics/Materials/KartYellow");
-                Destroy(nose.GetComponent<Collider>());
-                nose.transform.SetParent(visual.transform, false);
-                nose.transform.localPosition = new Vector3(0f, 0.1f, 0.95f);
+                visual.transform.localScale = new Vector3(1.0f, 0.4f, 1.8f);
+                var renderer = visual.GetComponent<Renderer>();
+                renderer.sharedMaterial = CreateMaterial("KartBlue", new Color(0.2f, 0.4f, 0.9f));
+                DestroyImmediate(visual.GetComponent<Collider>());
             }
 
             var dynamics = root.AddComponent<KartDynamics>();
@@ -244,7 +247,12 @@ namespace RKW.Physics
 
         private static void CreateWall(string name, Vector3 position, Vector3 scale)
         {
-            CreatePrimitive(name, PrimitiveType.Cube, position, scale, "KartPhysics/Materials/Barrier");
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = name;
+            wall.transform.position = position;
+            wall.transform.localScale = scale;
+            wall.GetComponent<Renderer>().sharedMaterial = CreateMaterial("Barrier", new Color(0.7f, 0.1f, 0.1f));
+            wall.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
         }
 
         private static GameObject CreatePrimitive(
