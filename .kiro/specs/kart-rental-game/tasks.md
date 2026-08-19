@@ -473,20 +473,20 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor (PlayMode)_
   - _Risco: Alto — calibração pode levar várias iterações; ScriptableObjects permitem ajuste rápido_
 
-- [ ] M2-T02 Property test: Weight Transfer Monotonicity (Property 5)
+- [x] M2-T02 Property test: Weight Transfer Monotonicity (Property 5)
   - **Property 5: Weight Transfer Monotonicity**
   - Para qualquer kart acima de threshold de velocidade, aumentar ângulo de esterço SHALL aumentar peso na roda externa traseira monotonicamente
   - Gerador determinístico NUnit gera: speed ∈ [threshold, maxSpeed], steer ∈ [0, maxSteer]
   - **Validates: Requirements 4.2**
   - _Dependências: M2-T01_
 
-- [ ] M2-T03 Property test: Steering Speed Loss (Property 6)
+- [x] M2-T03 Property test: Steering Speed Loss (Property 6)
   - **Property 6: Steering Speed Loss**
   - Para qualquer kart em velocidade elevada, aumentar ângulo de esterço SHALL aumentar perda de velocidade monotonicamente
   - **Validates: Requirements 4.3**
   - _Dependências: M2-T01_
 
-- [ ] M2-T04 Implementar modelo de frenagem
+- [x] M2-T04 Implementar modelo de frenagem
   - Distribuição 70% rear / 30% front (parametrizável via SO)
   - Frenagem em reta: distância mínima
   - Frenagem com esterço: sobre-esterço proporcional
@@ -500,19 +500,19 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Médio — calibração de bloqueio é sensível_
 
-- [ ] M2-T05 Property test: Straight Braking Superiority (Property 7)
+- [x] M2-T05 Property test: Straight Braking Superiority (Property 7)
   - **Property 7: Straight Braking Superiority**
   - Para qualquer velocidade acima de threshold, stopping distance em reta < stopping distance com steer ≠ 0
   - **Validates: Requirements 4.4**
   - _Dependências: M2-T04_
 
-- [ ] M2-T06 Property test: Brake-Steer Oversteer (Property 8)
+- [x] M2-T06 Property test: Brake-Steer Oversteer (Property 8)
   - **Property 8: Brake-Steer Oversteer**
   - Para qualquer velocidade e steer ≠ 0, adicionar frenagem SHALL aumentar lateral slip vs mesmo steer sem frenagem
   - **Validates: Requirements 4.5**
   - _Dependências: M2-T04_
 
-- [ ] M2-T07 Implementar superfícies (grip modifiers)
+- [x] M2-T07 Implementar superfícies (grip modifiers)
   - Criar SurfaceDataSO com coeficientes por tipo (asphalt, grass, dirt, curb/zebra)
   - Implementar surface triggers que modificam grip no KartDynamics
   - Zebra desestabiliza proporcional a velocidade/ângulo
@@ -526,13 +526,13 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M2-T08 Property test: Surface Grip Reduction (Property 9)
+- [x] M2-T08 Property test: Surface Grip Reduction (Property 9)
   - **Property 9: Surface Grip Reduction**
   - Para qualquer kart state, grip em grama/dirt ≤ 60% do grip em asfalto seco
   - **Validates: Requirements 4.7**
   - _Dependências: M2-T07_
 
-- [ ] M2-T09 Implementar colisões com perda de velocidade proporcional
+- [x] M2-T09 Implementar colisões com perda de velocidade proporcional
   - Usar PhysX OnCollisionEnter para detectar contato
   - Calcular severidade contínua: f(velocidade_relativa, ângulo, massa)
   - Aplicar perda de velocidade = severidade * fator_categoria
@@ -546,7 +546,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M2-T10 Implementar recuperação segura (recovery)
+- [x] M2-T10 Implementar recuperação segura (recovery)
   - Monitorar: imóvel > 4s, invertido > 85°, fora do perímetro, risco
   - Ao detectar: reposicionar kart no ponto de recovery mais próximo
   - Tornar não-colidível por 3 segundos após recovery
@@ -559,14 +559,14 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor (PlayMode)_
   - _Risco: Baixo_
 
-- [ ] M2-T11 Property test: Recovery Trigger Conditions (Property 11)
+- [x] M2-T11 Property test: Recovery Trigger Conditions (Property 11)
   - **Property 11: Recovery Trigger Conditions**
   - Para qualquer evento de colisão (qualquer severidade), sistema NÃO aciona recovery
   - Recovery APENAS quando: stuck > 4s, invertido > 85°, fora do perímetro, risco
   - **Validates: Requirements 4.10, 4.11**
   - _Dependências: M2-T10 (recovery deve existir antes de testar)_
 
-- [ ] M2-T12 Criar KartCategorySO para Escola (6.5 HP) e Rental Sport (13 HP)
+- [x] M2-T12 Criar KartCategorySO para Escola (6.5 HP) e Rental Sport (13 HP)
   - Criar ScriptableObjects com parâmetros conforme tabela do design
   - Escola: 55 km/h max, accel 8s, aderência 1.0g
   - Rental Sport: 85 km/h max, accel 5s, aderência 1.2g
@@ -579,13 +579,13 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo — valores são hipóteses, ajustáveis_
 
-- [ ] M2-T13 Property test: Category Differentiation (Property 12)
+- [x] M2-T13 Property test: Category Differentiation (Property 12)
   - **Property 12: Category Differentiation**
   - Para qualquer par de categorias distintas, ao menos maxSpeed, acceleration e lateralGrip diferem
   - **Validates: Requirements 5.3**
   - _Dependências: M2-T12_
 
-- [ ] M2-T14 Implementar controles touch (joystick virtual + pedais)
+- [x] M2-T14 Implementar controles touch (joystick virtual + pedais)
   - Criar InputController em RKW.Controls com Unity Input System
   - Implementar joystick virtual no lado esquerdo (steering [-1,1])
   - Implementar pedal de acelerador no lado direito (throttle [0,1])
@@ -601,13 +601,13 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Dispositivo Android real_
   - _Risco: Médio — UX de touch precisa iteração_
 
-- [ ] M2-T15 Property test: Throttle Ramp Rate Limit (Property 4)
+- [x] M2-T15 Property test: Throttle Ramp Rate Limit (Property 4)
   - **Property 4: Throttle Ramp Rate Limit**
   - Para qualquer sequência de inputs de throttle, output nunca aumenta mais rápido que 1/0.15 por segundo
   - **Validates: Requirements 3.5**
   - _Dependências: M2-T14_
 
-- [ ] M2-T16 Implementar slipstream (vácuo)
+- [x] M2-T16 Implementar slipstream (vácuo)
   - Detectar kart à frente dentro de 1.5 comprimentos por ≥ 1 segundo
   - Reduzir drag progressivamente até 8% (parametrizável)
   - Drag reduction maior quanto mais próximo
@@ -620,13 +620,13 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M2-T17 Property test: Slipstream Drag Reduction Monotonicity (Property 10)
+- [x] M2-T17 Property test: Slipstream Drag Reduction Monotonicity (Property 10)
   - **Property 10: Slipstream Drag Reduction Monotonicity**
   - Para quaisquer d1 < d2 ambas dentro do range de ativação, drag reduction em d1 ≥ drag reduction em d2
   - **Validates: Requirements 4.8**
   - _Dependências: M2-T16_
 
-- [ ] M2-T18 Criar pista greybox com start/finish line e checkpoints
+- [x] M2-T18 Criar pista greybox com start/finish line e checkpoints
   - Criar cena com geometria simples: circuito fechado com curvas variadas (lentas, médias, rápidas)
   - Adicionar colliders, surface triggers (asfalto, zebras, grama)
   - Incluir ao menos 1 seção de reta e 1 chicane
@@ -642,7 +642,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor + Android (build de teste)_
   - _Risco: Baixo — greybox é rápido de criar_
 
-- [ ] M2-T19 Implementar TimingManagerLite (cronometragem básica para vertical slice)
+- [x] M2-T19 Implementar TimingManagerLite (cronometragem básica para vertical slice)
   - Criar TimingManagerLite em RKW.Physics (ou RKW.Core temporariamente até M4 criar RKW.Timing)
   - Detectar passagem por start/finish line trigger
   - Detectar passagem por checkpoints (validar ordem)
@@ -740,7 +740,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M3-T04 Implementar 3 perfis de qualidade (Low/Medium/High) + detecção automática
+- [x] M3-T04 Implementar 3 perfis de qualidade (Low/Medium/High) + detecção automática
   - Criar QualityManager em RKW.Core
   - Definir perfis: Low (30 FPS target, ≤100 draw calls), Medium (60 FPS, ≤200), High (60 FPS, ≤350)
   - Implementar detecção automática baseada em SystemInfo (GPU, RAM)
@@ -754,7 +754,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
-- [ ] M3-T05 Implementar auto-adjust de qualidade com histerese
+- [x] M3-T05 Implementar auto-adjust de qualidade com histerese
   - WHEN média FPS em 3s < 28 → reduzir 1 nível
   - Upgrade ONLY WHEN: média 10s > 55 FPS AND cooldown 30s AND margem 5 FPS
   - Dynamic resolution scale: 70%–100%
@@ -767,7 +767,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Médio — tuning de thresholds pode precisar ajuste_
 
-- [ ] M3-T06 Property test: Quality Auto-Adjust with Hysteresis (Property 24)
+- [x] M3-T06 Property test: Quality Auto-Adjust with Hysteresis (Property 24)
   - **Property 24: Quality Auto-Adjust with Hysteresis**
   - Para qualquer histórico de FPS: downgrade quando 3s avg < 28; upgrade somente quando 10s avg > 55 AND cooldown 30s AND margem 5 FPS
   - **Validates: Requirements 12.5**
