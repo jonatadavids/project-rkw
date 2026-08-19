@@ -1,0 +1,21 @@
+{
+  "name": "RKW.Telemetry.EditMode.Tests",
+  "rootNamespace": "RKW.Telemetry.Tests.EditMode",
+  "references": [
+    "RKW.Telemetry"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

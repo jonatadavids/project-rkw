@@ -1,3 +1,4 @@
+using RKW.Telemetry;
 using RKW.Track;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
@@ -26,6 +27,20 @@ namespace RKW.Physics
             SpawnedKart = CreateKart();
             CreateCamera(SpawnedKart.transform);
             SetupTiming(SpawnedKart);
+            SetupTelemetry();
+        }
+
+        /// <summary>
+        /// M3-T07: attaches the performance telemetry runner so FPS/memory/
+        /// thermal samples are logged during on-device testing (including
+        /// the upcoming M3-T08 30-minute real-device run). No analytics
+        /// backend is wired in yet — see the comment on
+        /// <see cref="RKW.Telemetry.ITelemetrySink"/> for why.
+        /// </summary>
+        private static void SetupTelemetry()
+        {
+            var telemetryObject = new GameObject("PerformanceTelemetry");
+            telemetryObject.AddComponent<PerformanceTelemetryRunner>();
         }
 
         /// <summary>
