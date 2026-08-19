@@ -1,0 +1,6 @@
+<linker>
+  <!-- Preserve physics components that Unity primitives need -->
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+  <!-- Preserve core rendering for Shader.Find -->
+  <assembly fullname="UnityEngine.CoreModule" preserve="all"/>
+</linker>

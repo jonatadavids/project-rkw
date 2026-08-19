@@ -134,18 +134,19 @@ namespace RKW.Physics
             piece.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
         }
 
+        private static Material _baseMaterial;
+
         private static Material CreateMaterial(string name, Color color)
         {
-            // Primitives already have a default material. We create a new instance
-            // and just set the color. This works regardless of shader stripping.
-            var mat = new Material(Shader.Find("Unlit/Color"));
-            if (mat.shader == null || mat.shader.name == "Hidden/InternalErrorShader")
+            if (_baseMaterial == null)
             {
-                // Absolute fallback: create from any available shader on the primitive
-                var tempPrim = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                mat = new Material(tempPrim.GetComponent<Renderer>().sharedMaterial);
-                DestroyImmediate(tempPrim);
+                // Get the shader from a primitive - this is the only reliable way
+                // in stripped IL2CPP builds where Shader.Find returns null
+                var temp = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _baseMaterial = temp.GetComponent<Renderer>().sharedMaterial;
+                DestroyImmediate(temp);
             }
+            var mat = new Material(_baseMaterial);
             mat.color = color;
             mat.name = name;
             return mat;
