@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using RKW.Physics;
 
-namespace RKW.Tests.EditMode.Core
+namespace RKW.Physics.Tests.EditMode
 {
     /// <summary>
     /// Property 24: Quality Auto-Adjust with Hysteresis
