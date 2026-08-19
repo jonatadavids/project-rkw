@@ -711,7 +711,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor + Android_
   - _Risco: Médio — arte pode levar mais tempo que esperado; priorizar gameplay sobre estética_
 
-- [ ] M3-T02 Criar TrackConfigurationSO para a pista MVP
+- [x] M3-T02 Criar TrackConfigurationSO para a pista MVP
   - Criar assembly RKW.Track + RKW.Track.Tests (primeiro consumidor)
   - Criar ScriptableObject com: trackConfigurationId, trackId, direction (clockwise)
   - Definir: racing spline, ideal line, bot path, braking points
@@ -726,8 +726,12 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
+  - _Nota: implementado antes de M3-T01 (arte mínima). Valores (spline, grid,
+    checkpoints etc.) foram derivados da geometria do greybox atual
+    (KartPhysicsPrototypeBootstrap) para não bloquear M3-T04..T06; revisar/
+    reexportar quando a pista com arte mínima (M3-T01) estiver pronta._
 
-- [ ] M3-T03 Criar EnvironmentPresetSO "Day" e TrackConditionSO "Dry"
+- [x] M3-T03 Criar EnvironmentPresetSO "Day" e TrackConditionSO "Dry"
   - EnvironmentPreset "Day": iluminação baked, skybox diurno, sem spotlights, crowd placeholder
   - TrackCondition "Dry": todos multipliers = 1.0 (baseline)
   - Integrar com sistema de loading de cena
@@ -739,6 +743,9 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
+  - _Nota: implementado antes de M3-T01; presets carregam via Resources e
+    passam validação (IsValid), mas ainda não estão fiação com um sistema de
+    loading de cena real (esse ainda não existe no projeto)._
 
 - [x] M3-T04 Implementar 3 perfis de qualidade (Low/Medium/High) + detecção automática
   - Criar QualityManager em RKW.Core
