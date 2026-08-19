@@ -84,11 +84,15 @@ namespace RKW.Physics
             CreateTrackPiece("Corner_SW", new Vector3(-30f, 0f, -12f), new Vector3(17f, 0.12f, 13f), asphaltMat);
 
             // --- CURBS (zebras) ---
-            // Inner curbs at corners
-            CreateTrackPiece("Curb_NE_Inner", new Vector3(28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat);
-            CreateTrackPiece("Curb_NW_Inner", new Vector3(-28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat);
-            CreateTrackPiece("Curb_SE_Inner", new Vector3(28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat);
-            CreateTrackPiece("Curb_SW_Inner", new Vector3(-28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat);
+            // Inner curbs at corners. Non-solid: this is a single rigid BoxCollider
+            // kart with no wheel/suspension simulation, so any raised geometry
+            // (top surface above the main track's) acts as a physical wall it
+            // cannot climb. Curbs here are visual only until proper wheel colliders
+            // exist.
+            CreateTrackPiece("Curb_NE_Inner", new Vector3(28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat, solidCollider: false);
+            CreateTrackPiece("Curb_NW_Inner", new Vector3(-28f, 0.13f, 10f), new Vector3(3f, 0.08f, 3f), curbMat, solidCollider: false);
+            CreateTrackPiece("Curb_SE_Inner", new Vector3(28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat, solidCollider: false);
+            CreateTrackPiece("Curb_SW_Inner", new Vector3(-28f, 0.13f, -10f), new Vector3(3f, 0.08f, 3f), curbMat, solidCollider: false);
 
             // --- CHICANE (on back straight) ---
             CreateWall("Chicane_L", new Vector3(-5f, 0.4f, 14f), new Vector3(1.5f, 0.8f, 4f));
@@ -108,7 +112,9 @@ namespace RKW.Physics
             CreateWall("Barrier_Inner_W", new Vector3(-26f, 0.4f, 0f), new Vector3(0.4f, 0.8f, 22f));
 
             // --- START/FINISH LINE ---
-            CreateTrackPiece("StartFinish_Line", new Vector3(-10f, 0.13f, -15f), new Vector3(0.3f, 0.02f, 7f), whiteMat);
+            // Non-solid for the same reason as the curbs above: it sits proud of
+            // the asphalt surface and was blocking the kart right after spawn.
+            CreateTrackPiece("StartFinish_Line", new Vector3(-10f, 0.13f, -15f), new Vector3(0.3f, 0.02f, 7f), whiteMat, solidCollider: false);
 
             // --- GRASS SURFACE TRIGGERS (inside and outside) ---
             CreateSurface("Grass_Inner", new Vector3(0f, -0.01f, 0f), new Vector3(50f, 0.5f, 20f), 0.5f, 0f, true);
@@ -124,14 +130,26 @@ namespace RKW.Physics
             CreateCheckpoint("CP3", new Vector3(-30f, 1f, 0f), new Vector3(8f, 3f, 0.5f), 2, false);
         }
 
-        private static void CreateTrackPiece(string name, Vector3 position, Vector3 scale, Material material)
+        private static void CreateTrackPiece(string name, Vector3 position, Vector3 scale, Material material,
+            bool solidCollider = true)
         {
             var piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
             piece.name = name;
             piece.transform.position = position;
             piece.transform.localScale = scale;
             piece.GetComponent<Renderer>().sharedMaterial = material;
-            piece.GetComponent<Collider>().sharedMaterial = GetLowFrictionMaterial();
+            var collider = piece.GetComponent<Collider>();
+            if (solidCollider)
+            {
+                collider.sharedMaterial = GetLowFrictionMaterial();
+            }
+            else
+            {
+                // Visual-only decoration (curbs, line markings): keep the
+                // collider as a trigger so it never physically blocks the
+                // kart, which has no wheel colliders to climb small ledges.
+                collider.isTrigger = true;
+            }
         }
 
         private const string BaseMaterialResourcePath = "KartPhysics/BaseURPLit";
