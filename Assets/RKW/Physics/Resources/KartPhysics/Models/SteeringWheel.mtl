@@ -1,0 +1,43 @@
+# Reconstructed from steeringwheel.glb PBR material data (source .mtl not provided in upload)
+newmtl grip_leather
+Kd 0.0116 0.0123 0.0137
+Ks 0.2000 0.2000 0.2000
+Ns 25
+d 1.0000
+
+newmtl carbon_plate
+Kd 0.0176 0.0194 0.0232
+Ks 0.2000 0.2000 0.2000
+Ns 91
+d 1.0000
+
+newmtl brushed_alloy
+Kd 0.4793 0.5029 0.5271
+Ks 0.2000 0.2000 0.2000
+Ns 99
+d 1.0000
+
+newmtl bolt_steel
+Kd 0.6240 0.6514 0.6795
+Ks 0.2000 0.2000 0.2000
+Ns 109
+d 1.0000
+
+newmtl black_plastic
+Kd 0.0070 0.0075 0.0086
+Ks 0.2000 0.2000 0.2000
+Ns 46
+d 1.0000
+
+newmtl red_anodized
+Kd 0.3515 0.0116 0.0160
+Ks 0.2000 0.2000 0.2000
+Ns 102
+d 1.0000
+
+newmtl steel_bracket
+Kd 0.3231 0.3515 0.3813
+Ks 0.2000 0.2000 0.2000
+Ns 88
+d 1.0000
+

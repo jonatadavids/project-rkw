@@ -46,6 +46,18 @@ namespace RKW.Physics
         [Range(0f, 1f)] [SerializeField] private float rigidAxleGripInfluence = 0.22f;
         [Range(0f, 12f)] [SerializeField] private float visualWeightTransferDegrees = 4f;
 
+        [Header("Slipstream (draft)")]
+        // Founder playtest feedback, 2026-08-20 (round 8): "não consegui
+        // ver o vácuo funcionando" — KartDynamicsMath.CalculateSlipstreamDragReduction
+        // and its M2-T17 property test already existed, but nothing in
+        // KartDynamics ever called it, so the feature had zero effect in
+        // play despite the task being checked off. These are the tuning
+        // knobs it needs; see KartDynamics.UpdateSlipstream for the wiring.
+        [Min(0.1f)] [SerializeField] private float kartLengthMeters = 1.8f;
+        [Range(1f, 4f)] [SerializeField] private float slipstreamMaxActivationLengths = 1.6f;
+        [Range(0f, 0.3f)] [SerializeField] private float slipstreamMaxReduction = 0.2f;
+        [Min(0f)] [SerializeField] private float slipstreamMinimumTimeSeconds = 0.6f;
+
         public string CategoryId => categoryId;
         public float MassKilograms => massKilograms;
         public float CenterOfMassHeightMeters => centerOfMassHeightMeters;
@@ -78,6 +90,10 @@ namespace RKW.Physics
         public float InnerRearLiftThreshold => innerRearLiftThreshold;
         public float RigidAxleGripInfluence => rigidAxleGripInfluence;
         public float VisualWeightTransferDegrees => visualWeightTransferDegrees;
+        public float KartLengthMeters => kartLengthMeters;
+        public float SlipstreamMaxActivationLengths => slipstreamMaxActivationLengths;
+        public float SlipstreamMaxReduction => slipstreamMaxReduction;
+        public float SlipstreamMinimumTimeSeconds => slipstreamMinimumTimeSeconds;
 
         public bool IsValid(out string reason)
         {

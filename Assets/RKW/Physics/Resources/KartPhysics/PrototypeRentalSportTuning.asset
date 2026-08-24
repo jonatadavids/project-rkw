@@ -17,18 +17,18 @@ MonoBehaviour:
   centerOfMassHeightMeters: 0.20
   wheelbaseMeters: 1.05
   rearTrackWidthMeters: 1.05
-  maxSpeedKph: 85
+  maxSpeedKph: 70
   zeroToMaxSeconds: 5
   brakeDeceleration: 12
   rearBrakeDistribution: 0.7
   brakeOversteerGain: 1.4
   reverseAcceleration: 2.5
   reverseMaxSpeedKph: 12
-  coastingDeceleration: 1.4
-  aerodynamicDrag: 0.015
-  steeringLossAcceleration: 3.2
+  coastingDeceleration: 0.6
+  aerodynamicDrag: 0.0009
+  steeringLossAcceleration: 4.5
   throttleRampSeconds: 0.18
-  lateralGripG: 1.2
+  lateralGripG: 1.5
   peakSlipAngleDegrees: 7
   fullLossSlipAngleDegrees: 24
   minimumGripRatio: 0.28
@@ -43,3 +43,7 @@ MonoBehaviour:
   innerRearLiftThreshold: 0.55
   rigidAxleGripInfluence: 0.28
   visualWeightTransferDegrees: 5
+  kartLengthMeters: 1.8
+  slipstreamMaxActivationLengths: 1.8
+  slipstreamMaxReduction: 0.22
+  slipstreamMinimumTimeSeconds: 0.5

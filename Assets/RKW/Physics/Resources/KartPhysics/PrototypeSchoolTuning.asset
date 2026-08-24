@@ -20,9 +20,9 @@ MonoBehaviour:
   maxSpeedKph: 55
   zeroToMaxSeconds: 8
   brakeDeceleration: 10
-  coastingDeceleration: 1.6
-  aerodynamicDrag: 0.012
-  steeringLossAcceleration: 2.5
+  coastingDeceleration: 0.8
+  aerodynamicDrag: 0.001
+  steeringLossAcceleration: 3.5
   throttleRampSeconds: 0.2
   lateralGripG: 1
   peakSlipAngleDegrees: 8
@@ -39,3 +39,7 @@ MonoBehaviour:
   innerRearLiftThreshold: 0.62
   rigidAxleGripInfluence: 0.22
   visualWeightTransferDegrees: 4
+  kartLengthMeters: 1.8
+  slipstreamMaxActivationLengths: 1.8
+  slipstreamMaxReduction: 0.15
+  slipstreamMinimumTimeSeconds: 0.5

@@ -2,6 +2,7 @@
   "name": "RKW.Physics",
   "rootNamespace": "RKW.Physics",
   "references": [
+    "RKW.Audio",
     "RKW.Telemetry",
     "RKW.Track",
     "Unity.InputSystem",

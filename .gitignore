@@ -59,3 +59,14 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 TestResults-*.xml
+
+# Build/verify script output (scripts/build_deploy_verify.sh) — regenerated every run, not source
+/rkw_editmode_results.xml
+/rkw_logcat.txt
+/rkw_screenshot.png
+
+# Scratch/backup folder used during Cowork sessions for files that can't be
+# deleted directly on the connected device (mv-only workaround) — never
+# meant to be committed.
+_to_delete/
+_to_delete.meta

@@ -40,6 +40,7 @@ Este repositório contém a documentação de engenharia e produto, a fundação
 | 27 | [Fundação de Remote Config](./27-remote-config-foundation.md) | Flags base UGS de M1-T11 |
 | 28 | [Entrada condicional no M2](./28-m1-conditional-gate.md) | Revisão do Exit Gate M1 e exceções rastreadas para M2-T01 |
 | 29 | [Protótipo de física do kart](./29-kart-dynamics-prototype.md) | Fundação simcade e validação física da M2-T01 no Galaxy S25 |
+| 30 | [Log de playtest do fundador](./30-founder-playtest-log.md) | Rodadas informais pós-M2-T01 (direção, física, HUD); não substitui M2-T20 |
 | M1-T12 | [Resultados de Latência Photon](./spikes/photon-region-latency.md) | Snapshot de Brasília; heartbeat e duas localidades pendentes |
 
 ---

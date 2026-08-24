@@ -18,34 +18,34 @@ MonoBehaviour:
   direction: 0
   gridSlots:
   - position: 1
-    worldPosition: {x: -16, y: 0.5, z: -14.2}
+    worldPosition: {x: -41, y: 0.5, z: -13.2}
     yawDegrees: 90
   - position: 2
-    worldPosition: {x: -18, y: 0.5, z: -15.8}
+    worldPosition: {x: -43, y: 0.5, z: -14.8}
     yawDegrees: 90
   - position: 3
-    worldPosition: {x: -20, y: 0.5, z: -14.2}
+    worldPosition: {x: -45, y: 0.5, z: -13.2}
     yawDegrees: 90
   - position: 4
-    worldPosition: {x: -22, y: 0.5, z: -15.8}
+    worldPosition: {x: -47, y: 0.5, z: -14.8}
     yawDegrees: 90
   - position: 5
-    worldPosition: {x: -24, y: 0.5, z: -14.2}
+    worldPosition: {x: -49, y: 0.5, z: -13.2}
     yawDegrees: 90
   - position: 6
-    worldPosition: {x: -26, y: 0.5, z: -15.8}
+    worldPosition: {x: -51, y: 0.5, z: -14.8}
     yawDegrees: 90
   - position: 7
-    worldPosition: {x: -28, y: 0.5, z: -14.2}
+    worldPosition: {x: -53, y: 0.5, z: -13.2}
     yawDegrees: 90
   - position: 8
-    worldPosition: {x: -30, y: 0.5, z: -15.8}
+    worldPosition: {x: -55, y: 0.5, z: -14.8}
     yawDegrees: 90
   - position: 9
-    worldPosition: {x: -32, y: 0.5, z: -14.2}
+    worldPosition: {x: -57, y: 0.5, z: -13.2}
     yawDegrees: 90
   - position: 10
-    worldPosition: {x: -34, y: 0.5, z: -15.8}
+    worldPosition: {x: -59, y: 0.5, z: -14.8}
     yawDegrees: 90
   startLineId: StartFinish
   finishLineId: StartFinish
@@ -55,94 +55,127 @@ MonoBehaviour:
   - checkpointId: StartFinish
     sectorIndex: 0
     isStartFinish: 1
-    worldPosition: {x: -10, y: 1, z: -15}
+    worldPosition: {x: -37, y: 1, z: -14}
     size: {x: 0.5, y: 3, z: 8}
   - checkpointId: CP1
     sectorIndex: 0
     isStartFinish: 0
-    worldPosition: {x: 30, y: 1, z: -15}
+    worldPosition: {x: 37, y: 1, z: -14}
     size: {x: 0.5, y: 3, z: 8}
   - checkpointId: CP2
     sectorIndex: 1
     isStartFinish: 0
-    worldPosition: {x: 0, y: 1, z: 15}
+    worldPosition: {x: 0, y: 1, z: 14}
     size: {x: 0.5, y: 3, z: 8}
   - checkpointId: CP3
     sectorIndex: 2
     isStartFinish: 0
-    worldPosition: {x: -30, y: 1, z: 0}
+    worldPosition: {x: -74, y: 1, z: 0}
     size: {x: 8, y: 3, z: 0.5}
   timingSectorCount: 3
   racingSplinePoints:
-  - {x: -15, y: 0.5, z: -15}
-  - {x: 30, y: 0.5, z: -15}
-  - {x: 35, y: 0.5, z: 0}
-  - {x: 30, y: 0.5, z: 15}
-  - {x: -30, y: 0.5, z: 15}
-  - {x: -35, y: 0.5, z: 0}
-  - {x: -30, y: 0.5, z: -15}
-  - {x: -15, y: 0.5, z: -15}
+  - {x: -60.000, y: 0.5, z: -14.000}
+  - {x: 60.000, y: 0.5, z: -14.000}
+  - {x: 65.358, y: 0.5, z: -12.934}
+  - {x: 69.899, y: 0.5, z: -9.899}
+  - {x: 72.934, y: 0.5, z: -5.358}
+  - {x: 74.000, y: 0.5, z: 0.000}
+  - {x: 72.934, y: 0.5, z: 5.358}
+  - {x: 69.899, y: 0.5, z: 9.899}
+  - {x: 65.358, y: 0.5, z: 12.934}
+  - {x: 60.000, y: 0.5, z: 14.000}
+  - {x: -60.000, y: 0.5, z: 14.000}
+  - {x: -65.358, y: 0.5, z: 12.934}
+  - {x: -69.899, y: 0.5, z: 9.899}
+  - {x: -72.934, y: 0.5, z: 5.358}
+  - {x: -74.000, y: 0.5, z: 0.000}
+  - {x: -72.934, y: 0.5, z: -5.358}
+  - {x: -69.899, y: 0.5, z: -9.899}
+  - {x: -65.358, y: 0.5, z: -12.934}
+  - {x: -60.000, y: 0.5, z: -14.000}
   idealLinePoints:
-  - {x: -15, y: 0.5, z: -15}
-  - {x: 30, y: 0.5, z: -15}
-  - {x: 35, y: 0.5, z: 0}
-  - {x: 30, y: 0.5, z: 15}
-  - {x: -30, y: 0.5, z: 15}
-  - {x: -35, y: 0.5, z: 0}
-  - {x: -30, y: 0.5, z: -15}
-  - {x: -15, y: 0.5, z: -15}
+  - {x: -60.000, y: 0.5, z: -14.000}
+  - {x: 60.000, y: 0.5, z: -14.000}
+  - {x: 65.358, y: 0.5, z: -12.934}
+  - {x: 69.899, y: 0.5, z: -9.899}
+  - {x: 72.934, y: 0.5, z: -5.358}
+  - {x: 74.000, y: 0.5, z: 0.000}
+  - {x: 72.934, y: 0.5, z: 5.358}
+  - {x: 69.899, y: 0.5, z: 9.899}
+  - {x: 65.358, y: 0.5, z: 12.934}
+  - {x: 60.000, y: 0.5, z: 14.000}
+  - {x: -60.000, y: 0.5, z: 14.000}
+  - {x: -65.358, y: 0.5, z: 12.934}
+  - {x: -69.899, y: 0.5, z: 9.899}
+  - {x: -72.934, y: 0.5, z: 5.358}
+  - {x: -74.000, y: 0.5, z: 0.000}
+  - {x: -72.934, y: 0.5, z: -5.358}
+  - {x: -69.899, y: 0.5, z: -9.899}
+  - {x: -65.358, y: 0.5, z: -12.934}
+  - {x: -60.000, y: 0.5, z: -14.000}
   brakingPoints:
   - pointId: Brake_T1
-    worldPosition: {x: 24, y: 0.5, z: -15}
+    worldPosition: {x: 52, y: 0.5, z: -14}
   - pointId: Brake_T2
-    worldPosition: {x: 35, y: 0.5, z: 9}
+    worldPosition: {x: 74, y: 0.5, z: 10}
   - pointId: Brake_T3
-    worldPosition: {x: -24, y: 0.5, z: 15}
+    worldPosition: {x: -52, y: 0.5, z: 14}
   - pointId: Brake_T4
-    worldPosition: {x: -35, y: 0.5, z: -9}
+    worldPosition: {x: -74, y: 0.5, z: -10}
   botPathPoints:
-  - {x: -15, y: 0.5, z: -15}
-  - {x: 30, y: 0.5, z: -15}
-  - {x: 35, y: 0.5, z: 0}
-  - {x: 30, y: 0.5, z: 15}
-  - {x: -30, y: 0.5, z: 15}
-  - {x: -35, y: 0.5, z: 0}
-  - {x: -30, y: 0.5, z: -15}
-  - {x: -15, y: 0.5, z: -15}
+  - {x: -60.000, y: 0.5, z: -14.000}
+  - {x: 60.000, y: 0.5, z: -14.000}
+  - {x: 65.358, y: 0.5, z: -12.934}
+  - {x: 69.899, y: 0.5, z: -9.899}
+  - {x: 72.934, y: 0.5, z: -5.358}
+  - {x: 74.000, y: 0.5, z: 0.000}
+  - {x: 72.934, y: 0.5, z: 5.358}
+  - {x: 69.899, y: 0.5, z: 9.899}
+  - {x: 65.358, y: 0.5, z: 12.934}
+  - {x: 60.000, y: 0.5, z: 14.000}
+  - {x: -60.000, y: 0.5, z: 14.000}
+  - {x: -65.358, y: 0.5, z: 12.934}
+  - {x: -69.899, y: 0.5, z: 9.899}
+  - {x: -72.934, y: 0.5, z: 5.358}
+  - {x: -74.000, y: 0.5, z: 0.000}
+  - {x: -72.934, y: 0.5, z: -5.358}
+  - {x: -69.899, y: 0.5, z: -9.899}
+  - {x: -65.358, y: 0.5, z: -12.934}
+  - {x: -60.000, y: 0.5, z: -14.000}
   trackWidthMeters: 7
   marshalPosts:
   - pointId: Marshal_T1
-    worldPosition: {x: 40, y: 0.5, z: -15}
+    worldPosition: {x: -32, y: 0.5, z: -22.5}
   - pointId: Marshal_T2
-    worldPosition: {x: 40, y: 0.5, z: 15}
+    worldPosition: {x: 32, y: 0.5, z: 22.5}
   - pointId: Marshal_T3
-    worldPosition: {x: -40, y: 0.5, z: 15}
+    worldPosition: {x: 74, y: 0.5, z: 0}
   - pointId: Marshal_T4
-    worldPosition: {x: -40, y: 0.5, z: -15}
+    worldPosition: {x: -74, y: 0.5, z: 0}
   signalPosts:
   - pointId: Signal_StartFinish
-    worldPosition: {x: -10, y: 2, z: -19}
-  - pointId: Signal_T2
-    worldPosition: {x: 40, y: 2, z: 0}
+    worldPosition: {x: -37, y: 2, z: -18}
+  - pointId: Signal_East
+    worldPosition: {x: 82, y: 2, z: 0}
   - pointId: Signal_Back
-    worldPosition: {x: 0, y: 2, z: 19}
-  - pointId: Signal_T4
-    worldPosition: {x: -40, y: 2, z: 0}
+    worldPosition: {x: 0, y: 2, z: 18}
+  - pointId: Signal_West
+    worldPosition: {x: -82, y: 2, z: 0}
   escapeAreas:
   - areaId: EscapeArea_Main
-    center: {x: 0, y: 0, z: -19.5}
-    size: {x: 72, y: 1, z: 3}
+    center: {x: 0, y: 0, z: -18}
+    size: {x: 120, y: 1, z: 3}
   - areaId: EscapeArea_Back
-    center: {x: 0, y: 0, z: 19.5}
-    size: {x: 72, y: 1, z: 3}
+    center: {x: 0, y: 0, z: 18}
+    size: {x: 120, y: 1, z: 3}
   - areaId: EscapeArea_East
-    center: {x: 39, y: 0, z: 0}
+    center: {x: 78, y: 0, z: 0}
     size: {x: 3, y: 1, z: 40}
   - areaId: EscapeArea_West
-    center: {x: -39, y: 0, z: 0}
+    center: {x: -78, y: 0, z: 0}
     size: {x: 3, y: 1, z: 40}
   recoveryPoints:
   - pointId: Recovery_Main
-    worldPosition: {x: 0, y: 0.5, z: -15}
+    worldPosition: {x: 0, y: 0.5, z: -14}
   - pointId: Recovery_Back
-    worldPosition: {x: 0, y: 0.5, z: 15}
+    worldPosition: {x: 0, y: 0.5, z: 14}

@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4df099511fb1464d8412716c4c661714, type: 3}
+  m_Name: PrototypeSportPlusTuning
+  m_EditorClassIdentifier: RKW.Physics::RKW.Physics.KartCategorySO
+  categoryId: prototype-sport-plus
+  massKilograms: 170
+  centerOfMassHeightMeters: 0.20
+  wheelbaseMeters: 1.05
+  rearTrackWidthMeters: 1.05
+  maxSpeedKph: 85
+  zeroToMaxSeconds: 5
+  brakeDeceleration: 12
+  rearBrakeDistribution: 0.7
+  brakeOversteerGain: 1.4
+  reverseAcceleration: 2.5
+  reverseMaxSpeedKph: 12
+  coastingDeceleration: 0.6
+  aerodynamicDrag: 0.0009
+  steeringLossAcceleration: 4.5
+  throttleRampSeconds: 0.18
+  lateralGripG: 1.5
+  peakSlipAngleDegrees: 7
+  fullLossSlipAngleDegrees: 24
+  minimumGripRatio: 0.28
+  lateralResponse: 8
+  gripLossRate: 6
+  gripRecoveryRate: 2.2
+  maxSteeringAngleDegrees: 24
+  maximumYawRateDegrees: 120
+  yawResponse: 8
+  yawDamping: 2.8
+  weightTransferGain: 3.8
+  innerRearLiftThreshold: 0.55
+  rigidAxleGripInfluence: 0.28
+  visualWeightTransferDegrees: 5
+  kartLengthMeters: 1.8
+  slipstreamMaxActivationLengths: 1.8
+  slipstreamMaxReduction: 0.22
+  slipstreamMinimumTimeSeconds: 0.5

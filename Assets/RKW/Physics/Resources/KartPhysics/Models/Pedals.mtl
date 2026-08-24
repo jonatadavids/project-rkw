@@ -1,0 +1,50 @@
+# Reconstructed from pedals.glb PBR material data (source .mtl not provided
+# in upload; mtllib line in Pedals.obj adjusted to match this filename, same
+# convention as PedalBox.mtl).
+#
+# Round 28 (2026-08-24) founder feedback: "pode tirar aquele verde e
+# vermelho a animacao do pedal ja ajuda" — the model's own accent_red /
+# accent_green materials (originally a red stripe on the brake, a green
+# stripe on the throttle) were neutralized to a dark gray matching the rest
+# of the pedal box's palette, instead of using their real extracted colors.
+newmtl pedal_arm_steel
+Kd 0.0232 0.0262 0.0319
+Ks 0.2000 0.2000 0.2000
+Ns 111
+d 1.0000
+
+newmtl pedal_alloy_dark
+Kd 0.2051 0.2270 0.2542
+Ks 0.2000 0.2000 0.2000
+Ns 80
+d 1.0000
+
+newmtl pedal_rubber
+Kd 0.0070 0.0075 0.0091
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl accent_red
+Kd 0.1400 0.1500 0.1650
+Ks 0.2000 0.2000 0.2000
+Ns 80
+d 1.0000
+
+newmtl hinge_bolt
+Kd 0.7379 0.7682 0.7991
+Ks 0.2000 0.2000 0.2000
+Ns 170
+d 1.0000
+
+newmtl pedal_alloy
+Kd 0.5457 0.5776 0.6105
+Ks 0.2000 0.2000 0.2000
+Ns 110
+d 1.0000
+
+newmtl accent_green
+Kd 0.1400 0.1500 0.1650
+Ks 0.2000 0.2000 0.2000
+Ns 80
+d 1.0000

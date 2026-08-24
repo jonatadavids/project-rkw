@@ -1,0 +1,129 @@
+using System.Collections.Generic;
+using System.Globalization;
+using UnityEngine;
+
+namespace RKW.Physics
+{
+    /// <summary>
+    /// PlayerPrefs-backed history of completed laps, for the founder's
+    /// requested post-race leaderboard. This is a local, single-device
+    /// prototype — no backend/account involved, so PlayerPrefs (survives
+    /// scene reloads and app relaunches) is enough. Selection logic lives
+    /// in the pure, testable <see cref="LapRecordMath"/>; this class only
+    /// knows how to read/write the encoded string.
+    /// </summary>
+    public static class LapRecordStore
+    {
+        // Round 33 (2026-08-24) founder request: "reiniciar os tempos" after
+        // rebalancing kart top speeds (School 55 / RentalSport 70 /
+        // SportPlus 85 km/h, was 55/60/80) — old times were set under
+        // different, now-stale speed tunings and would be misleading to
+        // keep. Same technique already used once before (see the Decode
+        // comment below about round 23): changing this key orphans every
+        // previously saved entry (still on the device, just never read
+        // again) and starts a clean history from here on, without needing
+        // any on-device file access.
+        private const string HistoryKey = "RKW_LapRecordHistory_v2";
+        private const int MaxEntries = 200;
+        private const char EntrySeparator = ';';
+        private const char FieldSeparator = ',';
+
+        /// <summary>Appends a lap to the persisted history, trimming the oldest entries beyond <see cref="MaxEntries"/>. See <see cref="LapRecord.TrackSignature"/> for why <paramref name="trackSignature"/> matters.</summary>
+        public static void RecordLap(float lapTimeSeconds, long unixTimestampSeconds, string playerName, string trackSignature)
+        {
+            var history = new List<LapRecord>(LoadHistory())
+            {
+                new LapRecord(lapTimeSeconds, unixTimestampSeconds, playerName, trackSignature)
+            };
+
+            if (history.Count > MaxEntries)
+            {
+                history.RemoveRange(0, history.Count - MaxEntries);
+            }
+
+            PlayerPrefs.SetString(HistoryKey, Encode(history));
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>All persisted lap records, oldest first. Empty (never null) if nothing has been recorded yet.</summary>
+        public static LapRecord[] LoadHistory()
+        {
+            var raw = PlayerPrefs.GetString(HistoryKey, string.Empty);
+            return Decode(raw);
+        }
+
+        private static string Encode(List<LapRecord> records)
+        {
+            var entries = new string[records.Count];
+            for (var i = 0; i < records.Count; i++)
+            {
+                var record = records[i];
+                // Invariant culture so the decimal point is always '.' —
+                // never ',', which would collide with the field separator
+                // on a device set to a comma-decimal locale (e.g. pt-BR).
+                // TrackSignature is programmatically generated (e.g. "239m")
+                // so it never contains a separator; PlayerName already has
+                // ',' and ';' stripped by PlayerNameStore before it ever
+                // gets here. PlayerName stays LAST so it can safely be the
+                // "everything remaining" field on decode.
+                entries[i] = record.LapTimeSeconds.ToString(CultureInfo.InvariantCulture)
+                    + FieldSeparator + record.UnixTimestampSeconds.ToString(CultureInfo.InvariantCulture)
+                    + FieldSeparator + record.TrackSignature
+                    + FieldSeparator + record.PlayerName;
+            }
+
+            return string.Join(EntrySeparator.ToString(), entries);
+        }
+
+        private static LapRecord[] Decode(string raw)
+        {
+            if (string.IsNullOrEmpty(raw))
+            {
+                return System.Array.Empty<LapRecord>();
+            }
+
+            var entryStrings = raw.Split(EntrySeparator);
+            var records = new List<LapRecord>(entryStrings.Length);
+            foreach (var entry in entryStrings)
+            {
+                if (string.IsNullOrEmpty(entry))
+                {
+                    continue;
+                }
+
+                // Split into at most 4 fields — the name itself is never
+                // expected to contain a comma (PlayerNameStore strips them),
+                // but be defensive rather than silently drop an entry if it
+                // somehow does.
+                var fields = entry.Split(new[] { FieldSeparator }, 4);
+                // Round 7 wrote a 2-field format (no name); round 23
+                // (2026-08-24) added a 4th field (TrackSignature, see
+                // LapRecord) ahead of the name — skip anything that isn't
+                // today's 4-field format rather than crash. This also means
+                // every record written before this change is silently
+                // dropped on first load after updating — exactly the
+                // "reiniciar o melhor tempo" the founder asked for, as a
+                // one-time side effect of the fix, not something to redo
+                // every track change afterwards.
+                if (fields.Length != 4)
+                {
+                    continue;
+                }
+
+                if (!float.TryParse(fields[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var lapTime))
+                {
+                    continue;
+                }
+
+                if (!long.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var timestamp))
+                {
+                    continue;
+                }
+
+                records.Add(new LapRecord(lapTime, timestamp, fields[3], fields[2]));
+            }
+
+            return records.ToArray();
+        }
+    }
+}

@@ -1,0 +1,139 @@
+# Exported by three-d-stage
+newmtl tire_rubber
+Kd 0.0097 0.0103 0.0116
+Ks 0.2000 0.2000 0.2000
+Ns 12
+d 1.0000
+
+newmtl rim_alloy
+Kd 0.1022 0.1144 0.1301
+Ks 0.2000 0.2000 0.2000
+Ns 116
+d 1.0000
+
+newmtl chrome
+Kd 0.6939 0.7231 0.7529
+Ks 0.2000 0.2000 0.2000
+Ns 176
+d 1.0000
+
+newmtl frame_black
+Kd 0.0103 0.0116 0.0137
+Ks 0.2000 0.2000 0.2000
+Ns 116
+d 1.0000
+
+newmtl black_plastic
+Kd 0.0052 0.0056 0.0070
+Ks 0.2000 0.2000 0.2000
+Ns 64
+d 1.0000
+
+newmtl body_primary
+Kd 0.0086 0.1248 0.6724
+Ks 0.2000 0.2000 0.2000
+Ns 156
+d 1.0000
+
+newmtl body_secondary
+Kd 0.8879 0.8963 0.9047
+Ks 0.2000 0.2000 0.2000
+Ns 152
+d 1.0000
+
+newmtl decal_ink
+Kd 0.0070 0.0080 0.0103
+Ks 0.2000 0.2000 0.2000
+Ns 120
+d 1.0000
+
+newmtl seat_shell
+Kd 0.0060 0.0065 0.0080
+Ks 0.2000 0.2000 0.2000
+Ns 100
+d 1.0000
+
+newmtl wheel_grip
+Kd 0.0075 0.0080 0.0103
+Ks 0.2000 0.2000 0.2000
+Ns 30
+d 1.0000
+
+newmtl engine_alloy
+Kd 0.2664 0.2874 0.3095
+Ks 0.2000 0.2000 0.2000
+Ns 90
+d 1.0000
+
+newmtl exhaust_smoke
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.1007
+
+newmtl exhaust_smoke_0
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.1531
+
+newmtl exhaust_smoke_1
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.2055
+
+newmtl exhaust_smoke_2
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0015
+
+newmtl exhaust_smoke_3
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0484
+
+newmtl exhaust_smoke_4
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_5
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_6
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_7
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_8
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_9
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+
+newmtl exhaust_smoke_10
+Kd 0.6867 0.6867 0.6584
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 0.0000
+

@@ -13,6 +13,12 @@ namespace RKW.Physics
 
         public SurfaceDataSO SurfaceData => surfaceData;
 
+        /// <summary>Founder playtest feedback, 2026-08-20 (round 8): lets a procedurally-created trigger (see KartPhysicsPrototypeBootstrap.CreateSurface) assign its data at runtime instead of only via the Inspector.</summary>
+        public void Configure(SurfaceDataSO data)
+        {
+            surfaceData = data;
+        }
+
         private void Reset()
         {
             var col = GetComponent<Collider>();

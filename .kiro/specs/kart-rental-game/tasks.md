@@ -660,7 +660,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo — lógica simples; evolui para TimingManager completo em M4_
 
-- [ ] M2-T20 Checkpoint - Validar vertical slice com pilotos reais
+- [x] M2-T20 Checkpoint - Validar vertical slice com pilotos reais
   - Gerar build Android de teste com: kart + pista greybox + controles touch + cronometragem
   - **Vertical slice completo**: piloto dirige, completa voltas cronometradas, vê tempo na tela
   - Distribuir para ao menos 2 pilotos reais de kart
@@ -672,8 +672,15 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: 🧑‍💻 Fundador + pilotos reais obrigatório_
   - _Ambiente: Dispositivo Android real_
   - _Risco: Alto — se feel não convence, iterar mais em M2 antes de prosseguir_
+  - _Nota (2026-08-20): fundador confirmou ter colocado outras pessoas para
+    dirigir o build e aprovou seguir em frente ("já avaliei, já coloquei
+    outras pessoas para dirigir agora acho que podemos seguir"). A
+    avaliação numérica 0-10 por critério de `docs/playtests/M2-playtest-01-template.md`
+    não foi preenchida/documentada formalmente — a confirmação do fundador
+    foi tratada como a validação humana exigida por este item, mas o
+    template segue disponível caso se quisera registrar as notas depois._
 
-- [ ] M2-T21 Exit Gate M2
+- [x] M2-T21 Exit Gate M2
   - Kart dirigível com física autêntica validada por pilotos
   - Controles touch funcionais em dispositivo real
   - Ao menos 8 property tests de física passando
@@ -688,6 +695,9 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - **Start/finish line funcional**
   - Playtest com pilotos: média ≥ 6/10, nenhum critério abaixo de 5, aprovação qualitativa de ao menos 2 pilotos
   - _Validação humana: 🧑‍💻 Fundador confirma exit gate baseado em playtest_
+  - _Nota (2026-08-20): confirmado pelo fundador com base em M2-T20 acima —
+    ver `docs/30-founder-playtest-log.md` para o histórico técnico completo
+    das rodadas de ajuste que antecederam esta confirmação._
 
 ---
 
@@ -710,6 +720,157 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: 🧑‍💻 Fundador avalia visual/layout_
   - _Ambiente: Unity Editor + Android_
   - _Risco: Médio — arte pode levar mais tempo que esperado; priorizar gameplay sobre estética_
+  - _Nota (2026-08-20, rodada 13): progresso parcial usando o Kenney Racing
+    Kit (CC0) já vetado — feito nesta rodada: zebras reais (checkerboard
+    vermelho/branco, antes era um bloco vermelho sólido), 8 postos de
+    fiscal (placeholder, bandeiras), bandeira quadriculada perto do
+    start/finish, prédio de pit (placeholder) + linhas de entrada/saída de
+    pit pintadas na pista. NÃO fechada ainda: (1) traçado continua o oval
+    ~84x44m atual, não os ~1km/curvas variadas/3 setores pedidos — expandir
+    o layout mexe em TrackConfigurationSO (M3-T02), checkpoints e bot path
+    já validados pelo fundador, então foi deliberadamente adiado para uma
+    rodada própria em vez de arriscar nesta; (2) iluminação baked não dá
+    para configurar via este bootstrap em runtime (a pista é gerada por
+    código, não é geometria autorada na cena/Editor — bake real exigiria
+    mudar essa arquitetura); (3) ainda sem evidência formal (screenshot +
+    profiler stats) nem o PlayMode test citado. Ver
+    docs/30-founder-playtest-log.md para o racional completo desta rodada._
+  - _Nota (2026-08-20, rodada 19 — Fase 1 do traçado maior): traçado deixou
+    de ser o oval ~84x44m simétrico e virou um retângulo alongado ~114x58m
+    com dois lados de conexão assimétricos (um "rápido", curvas ~18°, e um
+    "técnico", curvas ~63°) — volta útil ~276m (era ~183m). Barreiras
+    externas/internas, checkpoints, grid de largada e bot path
+    (TrackConfigurationSO) recalculados do zero para a nova geometria;
+    pneus decorativos (placeholder) adicionados ao longo da barreira
+    externa. Geometria toda validada num modelo Python à parte antes de
+    escrever C# (checagem de buracos de pavimento na linha central que os
+    bots percorrem), pegando um bug real de "buraco" numa transição
+    curva/reta antes de chegar no dispositivo. Ainda plano (sem elevação —
+    Fase 2 do plano em 2 fases, ver rodada 14 do playtest log, fica para
+    depois desta ser validada estável). Ainda NÃO feito: traçado completo
+    ~1km/3 setores do texto original (atual é ~276m), grama restrita às
+    áreas de escape (continua um único plano grande — histórico de bugs de
+    costura de superfície tornou isso arriscado demais para empacotar
+    junto), iluminação baked (mesma limitação arquitetural da rodada 13),
+    evidência formal (screenshot + profiler) e o PlayMode test. Maior
+    mudança única de geometria desta sessão — ainda não confirmada pelo
+    fundador no dispositivo real. Ver docs/30-founder-playtest-log.md para
+    o racional completo._
+  - _Nota (2026-08-20, rodada 20 — curvas de verdade, peças rotacionadas):
+    fundador reagiu à rodada 19 ("mudou, [mas] ficou um quadrado, poucos
+    pneus") com fotos de referência e escolheu investir em rotação de
+    verdade em vez de mais curvas em caixas retas. Isso exigiu uma mudança
+    de arquitetura: até aqui todo helper de criação de peça só sabia
+    posicionar caixas alinhadas aos eixos; adicionados
+    CreateTrackPieceOriented/CreateWallOriented (+ visuais de cerca/pneu
+    equivalentes) como métodos NOVOS, sem tocar nos antigos — zero risco de
+    regressão nas peças já confirmadas. Traçado trocou a topologia "4
+    caixas de canto" por um "estádio" real (2 retas + 2 semicírculos de
+    raio 14m, cada um com 8 fatias de pavimento rotacionadas em vez de uma
+    caixa grande aproximando a curva) — volta ~239m. Raio escolhido
+    propositalmente fechado (14m, não um raio grande/preguiçoso) para que a
+    curva também resolva a reclamação de dificuldade da rodada 17, não só a
+    de formato. Mesma disciplina de validação Python (amostragem do círculo
+    verdadeiro, não só da aproximação poligonal) confirmou zero buracos de
+    pavimento antes de escrever qualquer C#. Ainda NÃO feito: pontas com
+    raios assimétricos/esses/chicanes (um "estádio" simples só fecha com
+    raios iguais nas duas pontas — precisaria de uma topologia diferente),
+    elevação, o traçado completo ~1km/3 setores, grama restrita às áreas de
+    escape, iluminação baked, evidência formal e o PlayMode test. Primeira
+    vez que peças rotacionadas entram no projeto — maior risco de geometria
+    desta sessão, ainda não confirmado pelo fundador no dispositivo real.
+    Ver docs/30-founder-playtest-log.md para o racional completo._
+  - _Nota (2026-08-20, rodada 21 — silhueta das curvas): fundador testou a
+    rodada 20 e reportou pista "um pouco desformatada com pontos de grama".
+    Causa: os quadrados de junta (não rotacionados) nos vértices das curvas
+    eram MAIORES que as fatias rotacionadas entre eles, produzindo uma
+    silhueta em "roda dentada" visível mesmo sem buraco estrutural.
+    Trocado por uma técnica de sobreposição: cada fatia de curva agora é
+    esticada 1,35x o próprio comprimento (retas ficam com o comprimento
+    exato), fatias vizinhas se sobrepõem naturalmente e cobrem a junta sem
+    peça quadrada avulsa; fatias por curva subiram de 8 para 12. Validado
+    sem buracos em modelo Python antes do C#, mesma disciplina das rodadas
+    19/20. Também nesta rodada (fora do escopo direto de M3-T01, ver
+    M4/bot AI): corrigido bug de largada dos bots (mirava sempre no
+    waypoint 0, quebrava em qualquer traçado onde esse waypoint não fica
+    perto do grid) e trocada a direção dos bots de "mirar direto no próximo
+    waypoint" para "pure pursuit" (ponto de mira desliza à frente no
+    traçado, técnica padrão de jogos de corrida — pesquisada e aplicada a
+    pedido do fundador). Pesquisado também o kit de pista do Kenney: as
+    peças de pista prontas (estrada/bordas) já fazem parte do Racing Kit
+    já integrado ao projeto (mesmo pacote das cercas/bandeiras) — trocar a
+    geometria procedural por elas é uma decisão de arte/produção em aberto,
+    não implementada. Ver docs/30-founder-playtest-log.md para o racional
+    completo e os testes novos de EditMode._
+  - _Nota (2026-08-23, rodada 22 — pendências menores): números de corrida
+    fechados na tela final de classificação (RaceManager.Configure ganhou
+    playerNumber, StandingEntry passou a carregar o número de cada kart,
+    mesmo formato "#n" do painel ao vivo). Evidência formal parcialmente
+    automatizada: ScenePerformanceLogger loga triângulos totais + contagem
+    de renderers (proxy de draw calls) ~2s após a cena carregar, dentro da
+    janela que o script já usa pra capturar o logcat — números reais de
+    performance aparecem em rkw_logcat.txt na próxima rodada de
+    build_deploy_verify.sh sem passo manual extra. PlayMode test
+    deliberadamente NÃO escrito nesta rodada: não há Editor Unity acessível
+    pra compilar/rodar o teste antes de entregá-lo, e o fluxo real de
+    início de corrida depende de um clique no RaceSetupMenu (sem gancho
+    programático hoje) — precisa de uma pequena mudança de testabilidade no
+    bootstrap, feita numa rodada própria com validação do fundador. Ver
+    docs/30-founder-playtest-log.md para o racional completo._
+  - _Nota (2026-08-23, rodada 23 — difícil na largada/1ª curva; câmera
+    "visão do piloto", fora do escopo direto de M3-T01, ver M4/bot AI e
+    câmera): fundador confirmou o médio (rodada 22) funcionando, mas no
+    difícil um bot "passou direto na primeira curva e voltou pra trás" e
+    outro "bateu na traseira" do kart do jogador na largada sem tentar
+    ultrapassar. Causa: no difícil `GetSteeringErrorDegrees` é 0° (linha
+    ideal perfeita, sem variação entre bots), então o pelotão nunca se
+    espalha sozinho numa reta — fica compacto até a largada e até a 1ª
+    curva. Corrigido com dois portões novos em `KartBotController`/
+    `KartBotMath`: `HasClearedStartingGrid` bloqueia a disputa de posição
+    até o bot percorrer 25m desde o próprio ponto de largada; e um
+    multiplicador de ritmo por bot (`_paceMultiplier`, 0,94-1,0, sorteado
+    uma vez por corrida, afeta só o teto de aceleração, nunca a precisão de
+    curva) dá variação de velocidade natural sem tirar a precisão do
+    difícil. 4 testes novos de EditMode. Também nesta rodada, a pedido do
+    fundador ("queria aquela visão do piloto"): segunda câmera
+    (`CameraViewMode.Cockpit`) em `KartPrototypeCamera`, sem a suavização
+    da câmera de perseguição (acompanha o kart rigidamente, frame a frame,
+    pra não dar sensação de enjoo em primeira pessoa), com botão de troca
+    (`CameraViewToggleButton`, canto superior esquerdo — único canto livre
+    da HUD) — antes desta rodada só existia a câmera de perseguição em
+    terceira pessoa. Ver docs/30-founder-playtest-log.md para o racional
+    completo; ainda não confirmado pelo fundador dirigindo de novo._
+  - _Nota (2026-08-23, follow-up mesmo dia): fundador testou a correção
+    acima e reportou regressão pior — no difícil, todos os 9 bots erram a
+    1ª curva e vão para o gramado (alguns ficam presos), mais um erro em
+    vermelho no console de desenvolvimento, e a câmera não mudou ao
+    apertar o botão. Revertido `HasClearedStartingGrid` (bloquear a
+    disputa de posição por 25m tirava a única separação lateral que os
+    bots tinham na reta antes da curva — sem ela o pelotão chegava
+    empilhado na curva e colidia em vez de virar); mantido o multiplicador
+    de ritmo por bot. "Bateu na traseira na largada" segue sem correção
+    real — causa mais provável é falta de qualquer lógica de frear por
+    obstáculo à frente, não a disputa de posição (que só mexe em direção,
+    nunca acelerador/freio); fica pendente para rodada própria. Câmera não
+    diagnosticada ainda — sem acesso a log do dispositivo neste ambiente,
+    preciso do texto do erro vermelho para confirmar a causa. Ver
+    docs/30-founder-playtest-log.md para o racional completo._
+  - _Nota (2026-08-24, rodada 25 — pista maior): a pendência "adiada" da
+    rodada anterior foi resolvida. Retas esticadas de 38m para 60m (de
+    ponta a ponta), raio das curvas mantido fixo em 14m — as curvas
+    continuam com exatamente a mesma forma, só afastadas uma da outra
+    (`GenerateStadiumCenterline` depende só do raio, nunca do comprimento
+    da reta, então isso é gap-safe por construção, não só por teste). Volta
+    útil foi de ~239m para ~327m. Grid, checkpoints, linha de referência,
+    caminho dos bots, pontos de freada, fiscais e zonas de escape em
+    `OvalMvpTrackConfiguration.asset` recalculados ponto a ponto (ver nota
+    de M3-T02 abaixo). Ainda NÃO feito: pontas com raios assimétricos/
+    esses/chicanes, elevação, o traçado completo ~1km/3 setores do texto
+    original da task, grama restrita às áreas de escape, iluminação baked,
+    evidência formal e o PlayMode test — mesma lista de pendências de
+    sempre, agora numa pista maior. Ainda não confirmado pelo fundador no
+    dispositivo real. Ver docs/30-founder-playtest-log.md rodada 25 para o
+    racional completo._
 
 - [x] M3-T02 Criar TrackConfigurationSO para a pista MVP
   - Criar assembly RKW.Track + RKW.Track.Tests (primeiro consumidor)
@@ -730,6 +891,29 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
     checkpoints etc.) foram derivados da geometria do greybox atual
     (KartPhysicsPrototypeBootstrap) para não bloquear M3-T04..T06; revisar/
     reexportar quando a pista com arte mínima (M3-T01) estiver pronta._
+  - _Nota (2026-08-24): essa dívida ainda não foi paga — confirmado ao
+    investigar "aumentar a pista" a pedido do fundador. O asset
+    `OvalMvpTrackConfiguration.asset` (grade, checkpoints, caminho dos
+    bots, pontos de freada, áreas de escape) tem coordenadas fixas
+    escritas à mão que só batem com a geometria visual atual (retas 38m,
+    raio 14m) por terem sido originalmente ajustadas para coincidir — não
+    por serem geradas a partir dela. Qualquer mudança futura no traçado
+    visual (`KartPhysicsPrototypeBootstrap`) precisa reescrever esse asset
+    inteiro em sincronia, ou bots/checkpoints/grade ficam desalinhados do
+    que aparece na tela. Fundador optou por adiar o aumento da pista para
+    uma rodada própria em vez de arriscar isso junto com outra mudança
+    (ver docs/30-founder-playtest-log.md rodada 2026-08-24)._
+  - _Nota (2026-08-24, rodada 25): a dívida foi paga junto com o aumento da
+    pista (M3-T01 acima) — `OvalMvpTrackConfiguration.asset` reescrito por
+    inteiro (grade, checkpoints, linha de referência, caminho dos bots,
+    pontos de freada, fiscais, zonas de escape) para a nova geometria de
+    60m de reta, derivado ponto a ponto por transformação de coordenadas
+    verificada duas vezes (uma manualmente, outra reimplementando o
+    algoritmo de geração da pista em Python e comparando os dois
+    resultados ponto a ponto). Continua sendo escrito à mão em vez de
+    gerado automaticamente a partir da geometria visual — a causa raiz
+    (SO desacoplado do gerador procedural) não mudou, só foi
+    ressincronizada manualmente de novo._
 
 - [x] M3-T03 Criar EnvironmentPresetSO "Day" e TrackConditionSO "Dry"
   - EnvironmentPreset "Day": iluminação baked, skybox diurno, sem spotlights, crowd placeholder
@@ -927,6 +1111,50 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
+  - _Nota (2026-08-24): protótipo informal e rápido implementado fora deste
+    fluxo formal, a pedido do fundador ("vamos tentar seguir talvez o
+    fantasma fique mais legal... podemos ir pra m4 que mexe com o fantasma
+    acho que vai ficar mais legal"), depois de confirmar com ele que
+    queria a versão rápida em vez do sistema completo (ver pergunta feita
+    e resposta registrada em docs/30-founder-playtest-log.md rodada
+    2026-08-24). Implementado direto em RKW.Physics (não RKW.Telemetry):
+    `GhostMath` (interpolação pura, testada), `GhostRecordStore`
+    (persistência local por PlayerPrefs, chaveada pela mesma "assinatura
+    de traçado" do LapRecordStore — não por LeaderboardKey) e
+    `GhostController` (grava a 10 Hz, não 30 Hz; sem limite/budget de
+    tamanho comprimido; reproduz sem física/colisão, como pedido). NÃO
+    substitui esta task: faltam a assembly RKW.Telemetry formal, a
+    associação com LeaderboardKey, 30 Hz, budget de 50KB, PlayMode test e
+    o property test de M4-T07. Mantido em aberto ([ ]) até a versão formal
+    ser feita, se/quando o fundador quiser._
+  - _Nota (2026-08-24, mesmo dia, rodada seguinte): fundador reportou o
+    ghost "esperando e disparando" entre a volta 1 (largada parada, atrás
+    da linha) e as demais (largada em movimento, já cruzando a linha em
+    velocidade) — diagnosticado como a causa real (não a quantidade de
+    voltas da corrida, como o fundador supôs). Corrigido dividindo o
+    "melhor ghost" salvo em dois baldes por traçado — `GhostLapKind.Opening`
+    e `GhostLapKind.Flying` — em vez de por número de volta configurado da
+    corrida, já que uma volta em movimento tem a mesma dinâmica
+    independente de ser a volta 2 de uma corrida de 3 ou a volta 4 de uma
+    de 5. `GhostRecordStore`/`GhostController` atualizados de acordo._
+  - _Nota (2026-08-24, mesma rodada de teste): fundador testou e explicou
+    melhor o pedido original — o problema de fundo não era a largada
+    parada/em movimento, era o ghost reiniciar o próprio relógio a cada
+    volta ("nao ficar relargando a cada volta pq fica meio sem sentido...
+    nunca sei se completei as 3 voltas melhor que o fantasma"). Redesenhado:
+    `GhostController` agora grava/reproduz a CORRIDA INTEIRA como um único
+    take contínuo (do início da corrida até completar o número de voltas
+    configurado), sem reiniciar em nenhuma volta — o que também resolve o
+    "espera e dispara" de graça, já que a transição de cada volta fica
+    gravada exatamente como aconteceu. `GhostLapKind` (Opening/Flying) foi
+    removido — não é mais necessário. `GhostRecordStore` agora guarda uma
+    melhor corrida por traçado POR QUANTIDADE DE VOLTAS configurada (1, 3,
+    5 — a sugestão original do fundador, que se mostrou correta uma vez
+    resolvido o problema certo). Só salva como novo recorde se a corrida
+    inteira for válida (nenhuma volta inválida) e mais rápida que a melhor
+    anterior daquele número de voltas. Ainda não confirmado pelo fundador
+    dirigindo. Continua fora do escopo formal desta task pelos mesmos
+    motivos acima._
 
 - [ ] M4-T07 Property test: Ghost Zero Physics Interference (Property 31)
   - **Property 31: Ghost Zero Physics Interference**
@@ -950,6 +1178,67 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: 🧑‍💻 Fundador avalia: "bots parecem humanos?"_
   - _Ambiente: Unity Editor + Android (performance)_
   - _Risco: Alto — calibração de bots convincentes é iterativa_
+  - _Nota (2026-08-24): fora deste fluxo formal (que continua em aberto,
+    sem BotProfileSO/5 perfis/ErrorInjector/RKW.Bots), o fundador pediu
+    informalmente que os bots do difícil "simulassem" a volta do fantasma
+    ("os bots no dificil poderia simular a volta do ghost... ai comeca a
+    fazer mais sentido pq eles ainda no dificil ficam bem ruinzinho e nao
+    tem competitividade"). Implementado com escopo bem restrito em
+    `KartPhysicsPrototypeBootstrap.SpawnBots`: apenas o bot de índice 0,
+    apenas no nível difícil, apenas quando já existe um ghost de "volta em
+    movimento" (`GhostLapKind.Flying`) gravado, segue as posições
+    gravadas do ghost em vez do `TrackConfigurationSO.BotPathPoints`
+    estático — reaproveitando o `KartBotController` existente sem nenhuma
+    IA nova. Deliberadamente limitado a 1 bot: os bots do difícil têm
+    variação de erro de curva zero (ver nota da rodada 23 em
+    `KartBotController`), então dar a mesma linha precisa a vários bots
+    provavelmente recriaria o amontoamento na primeira curva já visto
+    naquela rodada. NÃO substitui esta task nem resolve o problema mais
+    amplo de "bots do difícil erram a largada/primeira curva" (pausado a
+    pedido do fundador — ver docs/30-founder-playtest-log.md). Ainda não
+    confirmado pelo fundador dirigindo._
+  - _Nota (2026-08-24, mesma rodada de teste): fundador testou e reportou
+    que o bot "ficou perdidão" — removido. Causa provável: `KartBotController`
+    foi desenhado pra seguir um caminho de referência esparso (~20-40
+    pontos), e a gravação do fantasma tem 300-600 pontos (10 Hz), densa
+    demais pra sua lógica de avanço de waypoint. Nenhuma tentativa nova de
+    resolver a falta de competitividade dos bots do difícil — problema
+    original (largada/primeira curva) continua pausado, sem mudança._
+  - _Nota (2026-08-24, rodada 25 — recuperação de bot "perdido"): fundador
+    pediu "um mecanismo para recentralizar o kart se caso ele travar ou
+    tiver voltando pra trás, pq ele está sem referência total... que essa
+    inteligência permaneça no aumento da pista". A recuperação existente só
+    cobria bot fisicamente preso contra geometria (quase zero movimento por
+    tempo suficiente → reverter e desviar); não cobria um bot jogado longe
+    do traçado por uma colisão, nem um bot virado de costas pro sentido da
+    pista. `KartBotMath` ganhou `DistanceToNearestPathPointMeters` e
+    `IsFacingAgainstPathDirection` (ambas puras, com testes de EditMode);
+    `KartBotController.UpdateStuckDetection` agora resnapeia o bot pro
+    ponto mais próximo do caminho (mesma lógica já usada na largada,
+    fatorada num método compartilhado) quando ele está a mais de 30m do
+    traçado, persistentemente de costas, ou depois de 3 tentativas
+    seguidas da recuperação normal falharem. Deliberadamente sem nenhuma
+    constante amarrada ao tamanho da pista — opera só sobre o caminho e a
+    posição/orientação atuais do kart — então continua válido depois do
+    aumento de pista da mesma rodada (M3-T01 acima). NÃO é esta task
+    completa: é uma rede de segurança para bot "perdido", não a IA
+    competitiva de verdade (BotProfileSO, 5 perfis, ErrorInjector,
+    decision layer) que esta task ainda pede. Ainda não confirmado pelo
+    fundador dirigindo. Ver docs/30-founder-playtest-log.md rodada 25 para
+    o racional completo._
+  - _Nota (2026-08-24, rodada 25 — flag sozinho/com bots e comparação de
+    voltas): dois pedidos informais do fundador na mesma mensagem, fora do
+    escopo formal desta task mas diretamente relacionados à experiência de
+    correr contra bots. (1) `RaceSetupMenu` ganhou um seletor explícito
+    SOZINHO/COM BOTS acima do contador de bots (0-9) que já existia — antes
+    "sozinho" só existia implicitamente zerando o contador; agora é uma
+    escolha de dois estados, com o contador virando um texto fixo e
+    inativo em SOZINHO. (2) `KartBotController` agora grava o tempo de
+    cada volta (`LapTimes`), não só a contagem; a tela final de corrida
+    (`RaceManager`) ganhou uma tabela "você x bot — volta a volta" contra o
+    bot que chegou mais longe na corrida (`RaceProgressMath.
+    IsBetterComparisonCandidate`, pura, testada). Nenhum dos dois
+    confirmado pelo fundador dirigindo ainda._
 
 - [ ] M4-T09 Property test: Bot Error Within Tolerance (Property 19)
   - **Property 19: Bot Error Within Tolerance**
