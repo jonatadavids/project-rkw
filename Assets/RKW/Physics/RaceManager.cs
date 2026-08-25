@@ -58,7 +58,6 @@ namespace RKW.Physics
         // vez que a gente colocar uma pista nova" — see
         // LapRecordMath.CalculateClosedPathLengthMeters/FormatTrackSignature
         // for how this is derived from _path once, here, at race setup.
-        private string _trackSignature = string.Empty;
         private readonly List<StandingEntry> _finalStandings = new List<StandingEntry>();
 
         // Round 25 (2026-08-24) founder feedback: "outra coisa seria legal
@@ -106,11 +105,13 @@ namespace RKW.Physics
         // history, tagged with PlayerNameStore's saved name.
         private const int LeaderboardSize = 5;
         private List<LapRecord> _topRecords = new List<LapRecord>();
+        private PrototypeCompetitiveScope _comparisonScope;
 
         public bool IsFinished => _finished;
 
         public void Configure(TimingManagerLite timing, int targetLaps, BotDifficulty difficulty,
             KartPrototypeInput playerInput, IEnumerable<KartBotController> bots,
+            PrototypeCompetitiveScope comparisonScope,
             Transform playerTransform = null, string playerName = null, IReadOnlyList<Vector3> path = null,
             int playerNumber = 0)
         {
@@ -133,9 +134,7 @@ namespace RKW.Physics
             _playerName = string.IsNullOrEmpty(playerName) ? "Você" : playerName;
             _playerNumber = playerNumber;
             _path = path;
-            _trackSignature = path != null
-                ? LapRecordMath.FormatTrackSignature(LapRecordMath.CalculateClosedPathLengthMeters(path))
-                : string.Empty;
+            _comparisonScope = comparisonScope;
 
             _raceStartTime = Time.time;
             _finished = false;
@@ -165,7 +164,8 @@ namespace RKW.Physics
                 // Recorded regardless of whether the race is over yet, so
                 // the leaderboard reflects every clean lap ever driven, not
                 // just laps in races that happened to finish.
-                LapRecordStore.RecordLap(lapTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), PlayerNameStore.GetName(), _trackSignature);
+                LapRecordStore.RecordLap(lapTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    PlayerNameStore.GetName(), _comparisonScope);
             }
 
             if (_finished || _timing == null || _timing.LapsCompleted < _targetLaps)
@@ -189,7 +189,7 @@ namespace RKW.Physics
         private void ComputeLeaderboard()
         {
             var history = LapRecordStore.LoadHistory();
-            var currentTrackHistory = LapRecordMath.FilterByTrackSignature(history, _trackSignature);
+            var currentTrackHistory = LapRecordMath.FilterByComparisonScope(history, _comparisonScope);
             _topRecords = LapRecordMath.FindTopRecords(currentTrackHistory, LeaderboardSize);
         }
 

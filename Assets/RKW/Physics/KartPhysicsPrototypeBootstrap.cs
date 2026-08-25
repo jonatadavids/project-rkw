@@ -191,6 +191,8 @@ namespace RKW.Physics
             // (round 23/24, same day) so leaderboard/ghost data never mixes
             // across different track layouts.
             var trackSignature = LapRecordMath.FormatTrackSignature(LapRecordMath.CalculateClosedPathLengthMeters(path));
+            var kartCategoryId = SpawnedKart.Tuning.CategoryId;
+            var comparisonScope = new PrototypeCompetitiveScope(trackSignature, kartCategoryId);
 
             var bots = SpawnBots(_trackConfiguration, botCount, difficulty, _shuffledGridSlotIndices, _shuffledRaceNumbers);
 
@@ -212,7 +214,7 @@ namespace RKW.Physics
             // already carry their own via KartBotController.RaceNumber),
             // same pool RaceStandingsHud's live panel already draws from.
             raceManager.Configure(_timing, laps, difficulty, SpawnedKart.GetComponent<KartPrototypeInput>(),
-                botControllers, SpawnedKart.transform, PlayerNameStore.GetName(), path, _playerRaceNumber);
+                botControllers, comparisonScope, SpawnedKart.transform, PlayerNameStore.GetName(), path, _playerRaceNumber);
 
             // Founder playtest feedback, 2026-08-20 (round 8): "não mostrou
             // a classificação... nem durante a corrida nem o nome dos
@@ -244,7 +246,7 @@ namespace RKW.Physics
             var ghostVisual = CreateKartVisual(ghostRoot.transform, GhostTintColor, _playerRaceNumber);
             var ghostControllerObject = new GameObject("GhostController");
             ghostControllerObject.AddComponent<GhostController>()
-                .Configure(_timing, SpawnedKart.transform, ghostVisual, trackSignature, laps);
+                .Configure(_timing, SpawnedKart.transform, ghostVisual, comparisonScope, laps);
 
             // M3-T01 "Evidência: Screenshot + profiler stats" — see
             // ScenePerformanceLogger for why this makes that evidence show

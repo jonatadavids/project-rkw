@@ -38,7 +38,7 @@ Esses itens descrevem o código existente. A correção visual do kartv2, o giro
 
 ## Pendências obrigatórias
 
-1. **Ghost e recordes por categoria:** `GhostRecordStore` e `LapRecordStore` ainda usam chaves próprias e não incorporam a categoria/modelo de kart. Um resultado do kart de 85 km/h pode competir com categorias mais lentas. A migração deve usar uma identidade canônica própria e teste de compatibilidade; não será feita dentro desta estabilização documental.
+1. **Ghost formal:** o protótipo local agora separa `GhostRecordStore` e `LapRecordStore` por assinatura de pista e `KartCategorySO.CategoryId`, impedindo que o kart de 85 km/h concorra com categorias mais lentas. Registros antigos sem categoria são ignorados porque não podem ser migrados com segurança. Isso não substitui o `LeaderboardKey` completo nem conclui o ghost formal de M4-T06, que continua pendente com seu orçamento, frequência, serialização e testes próprios.
 2. **M2-T20/M2-T21:** houve aprovação qualitativa e testes informais, mas faltam notas por critério de pelo menos dois pilotos. Os checkboxes permanecem abertos.
 3. **Git LFS:** nenhum asset está atualmente rastreado por LFS. Adotar LFS para novos binários é uma história separada; migrar blobs já publicados exige decisão explícita sobre reescrita de histórico.
 4. **Proveniência de assets:** licenças já documentadas, como Kenney CC0, devem ser preservadas. Modelos e texturas novos precisam de registro de origem/autoria antes de publicação externa.
@@ -56,6 +56,6 @@ Esses itens descrevem o código existente. A correção visual do kartv2, o giro
 
 1. Revisar e publicar esta estabilização documental.
 2. Configurar Git LFS e registrar proveniência dos assets em uma história própria.
-3. Separar ghost/recordes por categoria com migração e testes próprios.
+3. Evoluir o ghost local para o contrato formal de M4-T06/`LeaderboardKey`, sem inferir dimensões que o protótipo ainda não conhece.
 4. Decompor o bootstrap em mudanças pequenas e verificáveis.
 5. Executar o playtest formal M2-T20 e somente então reavaliar o Exit Gate M2.
