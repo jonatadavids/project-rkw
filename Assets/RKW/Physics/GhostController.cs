@@ -70,6 +70,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted -= OnLapCompleted;
+                _timing.OnLapInvalidated -= OnLapInvalidated;
             }
 
             _timing = timing;
@@ -107,6 +108,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted += OnLapCompleted;
+                _timing.OnLapInvalidated += OnLapInvalidated;
             }
         }
 
@@ -115,6 +117,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted -= OnLapCompleted;
+                _timing.OnLapInvalidated -= OnLapInvalidated;
             }
         }
 
@@ -202,6 +205,13 @@ namespace RKW.Physics
             _bestRaceTimeSeconds = raceTimeSeconds;
             _bestRaceSamples = new List<GhostSample>(_recordingBuffer);
             GhostRecordStore.SaveBestGhost(_scope, _targetLaps, raceTimeSeconds, _bestRaceSamples);
+        }
+
+        private void OnLapInvalidated()
+        {
+            // Invalid attempts do not publish a lap time, but they still
+            // disqualify the continuous race recording from becoming a PB.
+            _raceValid = false;
         }
     }
 }

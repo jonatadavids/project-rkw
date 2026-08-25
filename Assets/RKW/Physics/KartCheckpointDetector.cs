@@ -10,6 +10,12 @@ namespace RKW.Physics
     public sealed class KartCheckpointDetector : MonoBehaviour
     {
         private TimingManagerLite _timing;
+        private Rigidbody _body;
+
+        private void Awake()
+        {
+            _body = GetComponent<Rigidbody>();
+        }
 
         public void Configure(TimingManagerLite timing)
         {
@@ -29,7 +35,9 @@ namespace RKW.Physics
                 return;
             }
 
-            _timing.RegisterCheckpointHit(checkpoint.CheckpointIndex, checkpoint.IsStartFinishLine);
+            var velocity = _body != null ? _body.linearVelocity : Vector3.zero;
+            _timing.RegisterCheckpointHit(checkpoint.CheckpointIndex, checkpoint.IsStartFinishLine,
+                checkpoint.IsCrossingForward(velocity, transform.forward));
         }
     }
 }

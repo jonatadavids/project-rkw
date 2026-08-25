@@ -13,11 +13,13 @@ namespace RKW.Physics
         private GUIStyle _style;
         private string _lastLapDisplay = "";
         private string _validityDisplay = "";
+        private bool _hasLapFeedback;
 
         private void Awake()
         {
             _timing = GetComponent<TimingManagerLite>();
             _timing.OnLapCompleted += OnLapCompleted;
+            _timing.OnLapInvalidated += OnLapInvalidated;
         }
 
         private void OnDestroy()
@@ -25,6 +27,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted -= OnLapCompleted;
+                _timing.OnLapInvalidated -= OnLapInvalidated;
             }
         }
 
@@ -32,6 +35,14 @@ namespace RKW.Physics
         {
             _lastLapDisplay = FormatTime(lapTime);
             _validityDisplay = isValid ? "VÁLIDA" : "INVÁLIDA";
+            _hasLapFeedback = true;
+        }
+
+        private void OnLapInvalidated()
+        {
+            _lastLapDisplay = "";
+            _validityDisplay = "INVÁLIDA";
+            _hasLapFeedback = true;
         }
 
         private void OnGUI()
@@ -54,11 +65,15 @@ namespace RKW.Physics
             GUI.Label(new Rect(x, y, 310f, 36f),
                 $"VOLTA: {FormatTime(_timing.CurrentLapTime)}", _style);
 
-            if (_timing.LapsCompleted > 0)
+            if (_hasLapFeedback)
             {
                 var lastColor = _validityDisplay == "VÁLIDA" ? "white" : "red";
+                _style.normal.textColor = lastColor == "white" ? Color.white : Color.red;
                 GUI.Label(new Rect(x, y + 36f, 310f, 36f),
-                    $"ÚLTIMA: {_lastLapDisplay} ({_validityDisplay})", _style);
+                    _validityDisplay == "VÁLIDA"
+                        ? $"ÚLTIMA: {_lastLapDisplay} (VÁLIDA)"
+                        : "VOLTA INVÁLIDA", _style);
+                _style.normal.textColor = Color.white;
             }
 
             if (_timing.BestLapTime < float.MaxValue)
