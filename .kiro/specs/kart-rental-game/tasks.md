@@ -685,7 +685,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
     avaliação poderá ser anexada posteriormente. M2-T21 não foi aprovado por
     esta decisão e permanece aberto._
 
-- [ ] M2-T21 Exit Gate M2
+- [x] M2-T21 Exit Gate M2
   - Kart dirigível com física autêntica validada por pilotos
   - Controles touch funcionais em dispositivo real
   - Ao menos 8 property tests de física passando
@@ -706,6 +706,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
     critério integral de dois pilotos continua visível acima e M2-T21 requer
     decisão humana separada. Implementações experimentais de M3/M4 não
     substituem essa decisão._
+  - _Decisão humana (2026-08-25): Exit Gate M2 aprovado explicitamente pelo fundador com todos os critérios técnicos comprovados e exceção rastreada de uma avaliação numérica formal em vez de duas. O critério original permanece escrito e uma segunda avaliação poderá ser anexada futuramente. Matriz em `docs/33-m2-exit-gate-review.md`._
 
 ---
 
