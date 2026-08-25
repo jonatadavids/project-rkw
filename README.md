@@ -8,7 +8,9 @@ Jogo mobile multiplayer de kart rental com dirigibilidade autêntica (simcade), 
 
 ## Status
 
-🧱 **M1 em andamento** — Fundação Unity, Photon, UGS de desenvolvimento, fluxo Bootstrap → MainMenu, localização e Remote Config de flags base criados; M1-T01 a M1-T06 e M1-T08 a M1-T11 concluídas, com a Etapa A local da M1-T07 validada parcialmente. Nenhum gameplay.
+🧪 **Protótipo jogável em evolução** — A fundação Unity/Photon/UGS continua disponível e o repositório já contém física simcade, controles touch, pista, cronometragem, categorias de kart, bots, áudio e protótipos experimentais de ghost. A rodada 33 está consolidada em [`status-rodada-33.md`](./status-rodada-33.md).
+
+Os Exit Gates integrais permanecem regidos por `tasks.md`: M1 continua condicional e M2-T20/M2-T21 permanecem abertos até o playtest formal registrar notas de pelo menos dois pilotos. Código experimental de milestones posteriores não equivale à conclusão automática das respectivas tarefas.
 
 ---
 
@@ -47,6 +49,9 @@ docs/
   25-local-mobile-build-validation.md ← Evidências locais parciais da M1-T07
   26-localization-foundation.md ← Fundação de localização da UI de M1-T10
   27-remote-config-foundation.md ← Flags base de Remote Config de M1-T11
+  28-m1-conditional-gate.md ← Exceções rastreadas para entrada condicional no M2
+  29-kart-dynamics-prototype.md ← Fundação da física e validação inicial no S25
+  30-founder-playtest-log.md ← Histórico informal de calibração e prototipagem
   adr/
     0001-engine.md
     0002-networking.md
@@ -72,9 +77,9 @@ README.md                   ← Este arquivo
 | Backend | Unity Gaming Services |
 | IAP | Unity IAP |
 | Ads | AdMob |
-| CI/CD | Unity Build Automation |
-| Versionamento | GitHub + Git LFS |
-| Distribuição | TestFlight + Google Play Internal |
+| CI/CD | Builds locais validados; Unity Build Automation ainda pendente |
+| Versionamento | GitHub; adoção efetiva de Git LFS ainda pendente |
+| Distribuição | TestFlight + Google Play Internal planejados, não configurados |
 
 ---
 
