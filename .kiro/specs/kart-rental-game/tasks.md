@@ -660,7 +660,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo — lógica simples; evolui para TimingManager completo em M4_
 
-- [ ] M2-T20 Checkpoint - Validar vertical slice com pilotos reais
+- [x] M2-T20 Checkpoint - Validar vertical slice com pilotos reais
   - Gerar build Android de teste com: kart + pista greybox + controles touch + cronometragem
   - **Vertical slice completo**: piloto dirige, completa voltas cronometradas, vê tempo na tela
   - Distribuir para ao menos 2 pilotos reais de kart
@@ -672,13 +672,15 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: 🧑‍💻 Fundador + pilotos reais obrigatório_
   - _Ambiente: Dispositivo Android real_
   - _Risco: Alto — se feel não convence, iterar mais em M2 antes de prosseguir_
-  - _Nota revisada (2026-08-24): o fundador confirmou que outras pessoas
-    dirigiram o build e aprovou qualitativamente a evolução. Essa evidência
-    é válida como playtest informal, mas não contém as notas 0-10 por
-    critério nem permite comprovar média ≥ 6/10 e ausência de critério
-    crítico abaixo de 5. O item permanece aberto até pelo menos dois pilotos
-    serem registrados em `docs/playtests/M2-playtest-01.md` com os critérios
-    originais; nenhuma exigência foi reduzida._
+  - _Decisão humana (2026-08-24): registrada em
+    `docs/playtests/M2-playtest-01.md` uma avaliação de piloto real com
+    realismo 5, responsividade 7, diversão 7 e controles 7 (média 6,5;
+    nenhum critério abaixo de 5). O fundador declarou explicitamente essa
+    validação suficiente e autorizou concluir M2-T20 sem aguardar a segunda
+    avaliação. Trata-se de exceção humana rastreada; o critério original de
+    dois pilotos permanece escrito acima e não foi rebaixado. Uma segunda
+    avaliação poderá ser anexada posteriormente. M2-T21 não foi aprovado por
+    esta decisão e permanece aberto._
 
 - [ ] M2-T21 Exit Gate M2
   - Kart dirigível com física autêntica validada por pilotos
@@ -695,11 +697,12 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - **Start/finish line funcional**
   - Playtest com pilotos: média ≥ 6/10, nenhum critério abaixo de 5, aprovação qualitativa de ao menos 2 pilotos
   - _Validação humana: 🧑‍💻 Fundador confirma exit gate baseado em playtest_
-  - _Nota revisada (2026-08-24): a evolução funcional e os playtests
-    informais estão registrados em `docs/30-founder-playtest-log.md`, mas o
-    gate integral depende de M2-T20 e permanece aberto enquanto faltarem as
-    avaliações numéricas de dois pilotos. Implementações experimentais de
-    M3/M4 não substituem esse critério._
+  - _Nota revisada (2026-08-24): M2-T20 foi concluída por decisão humana com
+    uma avaliação numérica de piloto real e exceção rastreada quanto à
+    segunda avaliação. Isso não aprova automaticamente este Exit Gate: o
+    critério integral de dois pilotos continua visível acima e M2-T21 requer
+    decisão humana separada. Implementações experimentais de M3/M4 não
+    substituem essa decisão._
 
 ---
 
