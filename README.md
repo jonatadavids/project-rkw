@@ -10,7 +10,7 @@ Jogo mobile multiplayer de kart rental com dirigibilidade autêntica (simcade), 
 
 🧪 **Protótipo jogável em evolução** — A fundação Unity/Photon/UGS continua disponível e o repositório já contém física simcade, controles touch, pista, cronometragem, categorias de kart, bots, áudio e protótipos experimentais de ghost. A rodada 33 está consolidada em [`status-rodada-33.md`](./status-rodada-33.md).
 
-Os Exit Gates integrais permanecem regidos por `tasks.md`: M1 continua condicional e M2-T20/M2-T21 permanecem abertos até o playtest formal registrar notas de pelo menos dois pilotos. Código experimental de milestones posteriores não equivale à conclusão automática das respectivas tarefas.
+Os Exit Gates integrais permanecem regidos por `tasks.md`: M1 continua condicional e o Exit Gate M2 foi aprovado em 2026-08-25 com exceção humana rastreada para a segunda avaliação numérica de piloto. Código experimental de milestones posteriores não equivale à conclusão automática das respectivas tarefas.
 
 ---
 
