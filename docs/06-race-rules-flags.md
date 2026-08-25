@@ -33,6 +33,10 @@ Definir o regulamento esportivo do jogo, bandeiras, penalidades, protocolo de re
 | Direção contrária | Automática (heading vs track direction) | Bandeira preta imediata | — |
 | Abandono frequente | Backend (3+ abandonos em 24 h) | Cooldown de matchmaking 15 min | — |
 
+### Validação mínima de volta
+
+Uma volta somente avança a contagem competitiva quando todos os checkpoints forem atravessados na ordem configurada e a linha de chegada for cruzada no sentido válido da configuração. Cruzamentos no sentido contrário são ignorados: não iniciam, não completam e não consomem uma volta. Um cruzamento no sentido correto sem a sequência completa gera somente feedback de tentativa inválida, sem publicar tempo, incrementar `LapsCompleted`, entrar na lista volta a volta, atualizar a melhor volta ou encerrar a corrida.
+
 ---
 
 ## Protocolo de Recuperação Segura

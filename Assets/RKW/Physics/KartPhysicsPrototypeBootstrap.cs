@@ -1081,7 +1081,9 @@ namespace RKW.Physics
             col.size = size;
             col.isTrigger = true;
             var cp = obj.AddComponent<CheckpointTrigger>();
-            cp.Configure(index, isStartFinish);
+            // The clockwise prototype crosses start/finish toward +X.
+            // Other checkpoints use ordering only and have no direction gate.
+            cp.Configure(index, isStartFinish, isStartFinish ? Vector3.right : Vector3.zero);
         }
 
         private static void CreateSurface(string name, Vector3 position, Vector3 size,

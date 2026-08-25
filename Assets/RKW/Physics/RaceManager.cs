@@ -78,6 +78,7 @@ namespace RKW.Physics
         private const float ToastDurationSeconds = 2.6f;
         private int _toastLapNumber;
         private float _toastLapTime;
+        private bool _toastInvalid;
         private float _toastShownUntil = -1f;
         private GUIStyle _toastStyle;
 
@@ -118,6 +119,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted -= OnPlayerLapCompleted;
+                _timing.OnLapInvalidated -= OnPlayerLapInvalidated;
             }
 
             _timing = timing;
@@ -144,29 +146,28 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted += OnPlayerLapCompleted;
+                _timing.OnLapInvalidated += OnPlayerLapInvalidated;
             }
         }
 
         private void OnPlayerLapCompleted(float lapTime, bool isValid)
         {
-            _playerLapTimes.Add(lapTime);
+            if (!isValid)
+            {
+                return;
+            }
 
-            // Round 28: fires for every completed lap (not just valid ones
-            // — a lap that got invalidated still deserves the "you crossed
-            // the line" feedback, the player can see something was off
-            // from the time itself looking wrong).
+            _playerLapTimes.Add(lapTime);
             _toastLapNumber = _playerLapTimes.Count;
             _toastLapTime = lapTime;
+            _toastInvalid = false;
             _toastShownUntil = Time.time + ToastDurationSeconds;
 
-            if (isValid)
-            {
-                // Recorded regardless of whether the race is over yet, so
-                // the leaderboard reflects every clean lap ever driven, not
-                // just laps in races that happened to finish.
-                LapRecordStore.RecordLap(lapTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    PlayerNameStore.GetName(), _comparisonScope);
-            }
+            // Recorded regardless of whether the race is over yet, so the
+            // leaderboard reflects every clean lap ever driven, not just
+            // laps in races that happened to finish.
+            LapRecordStore.RecordLap(lapTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                PlayerNameStore.GetName(), _comparisonScope);
 
             if (_finished || _timing == null || _timing.LapsCompleted < _targetLaps)
             {
@@ -184,6 +185,12 @@ namespace RKW.Physics
             ComputeLeaderboard();
             ComputeFinalStandings();
             Debug.Log($"RaceManager: race finished in {_finishTime:0.000}s ({_targetLaps} laps).");
+        }
+
+        private void OnPlayerLapInvalidated()
+        {
+            _toastInvalid = true;
+            _toastShownUntil = Time.time + ToastDurationSeconds;
         }
 
         private void ComputeLeaderboard()
@@ -350,7 +357,9 @@ namespace RKW.Physics
                 _toastStyle.normal.textColor = new Color(1f, 0.85f, 0.3f, alpha);
 
                 var toastRect = new Rect((Screen.width - 420f * scale) * 0.5f, 82f * scale, 420f * scale, 40f * scale);
-                GUI.Label(toastRect, $"VOLTA {_toastLapNumber}  •  {FormatTime(_toastLapTime)}", _toastStyle);
+                GUI.Label(toastRect, _toastInvalid
+                    ? "VOLTA INVÁLIDA  •  COMPLETE O CIRCUITO"
+                    : $"VOLTA {_toastLapNumber}  •  {FormatTime(_toastLapTime)}", _toastStyle);
             }
 
             if (!_finished)
@@ -592,6 +601,7 @@ namespace RKW.Physics
             if (_timing != null)
             {
                 _timing.OnLapCompleted -= OnPlayerLapCompleted;
+                _timing.OnLapInvalidated -= OnPlayerLapInvalidated;
             }
         }
     }

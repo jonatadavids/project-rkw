@@ -26,6 +26,7 @@ namespace RKW.Physics
         public bool IsCurrentLapValid => _lapInProgress && !_lapInvalid;
 
         public event Action<float, bool> OnLapCompleted; // (lapTime, isValid)
+        public event Action OnLapInvalidated;
 
         public void Configure(int checkpointCount)
         {
@@ -33,10 +34,19 @@ namespace RKW.Physics
             Reset();
         }
 
-        public void RegisterCheckpointHit(int checkpointIndex, bool isStartFinish)
+        public void RegisterCheckpointHit(int checkpointIndex, bool isStartFinish,
+            bool isCrossingForward = true)
         {
             if (isStartFinish)
             {
+                // A reverse crossing is not a lap boundary. Ignore it without
+                // resetting checkpoint progress so backing across the line
+                // cannot start, complete, or consume a lap.
+                if (!isCrossingForward)
+                {
+                    return;
+                }
+
                 HandleStartFinishCrossing();
                 return;
             }
@@ -71,15 +81,26 @@ namespace RKW.Physics
             var allCheckpointsPassed = _nextExpectedCheckpoint >= totalCheckpoints;
             var isValid = allCheckpointsPassed && !_lapInvalid;
 
-            LastLapTime = lapTime;
-            LapsCompleted++;
-
             if (isValid && lapTime < BestLapTime)
             {
                 BestLapTime = lapTime;
             }
 
-            OnLapCompleted?.Invoke(lapTime, isValid);
+            if (isValid)
+            {
+                LastLapTime = lapTime;
+                LapsCompleted++;
+            }
+
+            if (isValid)
+            {
+                OnLapCompleted?.Invoke(lapTime, true);
+            }
+            else
+            {
+                OnLapInvalidated?.Invoke();
+            }
+
             StartNewLap();
         }
 

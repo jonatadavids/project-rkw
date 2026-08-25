@@ -661,6 +661,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Validação humana: não_
   - _Ambiente: Unity Editor_
   - _Risco: Baixo — lógica simples; evolui para TimingManager completo em M4_
+  - _Correção de validação (2026-08-25): aprovada pelo fundador no Galaxy S25. `LapsCompleted` conta somente voltas válidas; cruzar a chegada de ré é ignorado e cruzar no sentido correto sem todos os checkpoints emite apenas “VOLTA INVÁLIDA”, sem publicar tempo, entrar na lista volta a volta, avançar corrida, melhor tempo ou ghost._
 
 - [x] M2-T20 Checkpoint - Validar vertical slice com pilotos reais
   - Gerar build Android de teste com: kart + pista greybox + controles touch + cronometragem
