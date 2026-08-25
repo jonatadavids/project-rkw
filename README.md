@@ -78,7 +78,7 @@ README.md                   ← Este arquivo
 | IAP | Unity IAP |
 | Ads | AdMob |
 | CI/CD | Builds locais validados; Unity Build Automation ainda pendente |
-| Versionamento | GitHub; adoção efetiva de Git LFS ainda pendente |
+| Versionamento | GitHub + Git LFS para assets de arte/áudio a partir da US-003; histórico anterior preservado |
 | Distribuição | TestFlight + Google Play Internal planejados, não configurados |
 
 ---

@@ -42,6 +42,7 @@ Este repositório contém a documentação de engenharia e produto, a fundação
 | 29 | [Protótipo de física do kart](./29-kart-dynamics-prototype.md) | Fundação simcade e validação física da M2-T01 no Galaxy S25 |
 | 30 | [Log de playtest do fundador](./30-founder-playtest-log.md) | Rodadas informais pós-M2-T01 (direção, física, HUD); não substitui M2-T20 |
 | 31 | [Estado da rodada 33](../status-rodada-33.md) | Consolidação técnica, validações atuais e pendências após o commit local da rodada 33 |
+| 32 | [Proveniência de assets e Git LFS](./32-asset-provenance-and-lfs.md) | Política de binários, origem conhecida e pendências de liberação dos assets atuais |
 | M1-T12 | [Resultados de Latência Photon](./spikes/photon-region-latency.md) | Snapshot de Brasília; heartbeat e duas localidades pendentes |
 
 ---
