@@ -73,6 +73,21 @@ namespace RKW.Track.Tests.EditMode
         }
 
         [Test]
+        public void OvalMvpConfiguration_HasCalibratedPlayerRecoveryParameters()
+        {
+            var config = Resources.Load<TrackConfigurationSO>(OvalMvpResourcePath);
+            Assert.That(config, Is.Not.Null);
+
+            Assert.That(config.RecoveryPoints.Count, Is.GreaterThan(0));
+            Assert.That(config.RecoveryStuckSeconds, Is.EqualTo(4f));
+            Assert.That(config.RecoveryStoppedSpeedMetersPerSecond, Is.EqualTo(0.2f));
+            Assert.That(config.RecoveryInvertedDegrees, Is.EqualTo(85f));
+            Assert.That(config.RecoverySafetyHeightMeters, Is.EqualTo(2f));
+            Assert.That(config.RecoveryCollisionGraceSeconds, Is.EqualTo(3f));
+            Assert.That(config.RecoveryPerimeterMultiplier, Is.EqualTo(3f));
+        }
+
+        [Test]
         public void EmptyConfiguration_IsInvalid()
         {
             var config = ScriptableObject.CreateInstance<TrackConfigurationSO>();

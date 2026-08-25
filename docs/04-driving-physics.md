@@ -126,10 +126,27 @@ graph LR
 
 ## Casos de Borda
 
-- Kart preso em barreira: detectar imobilidade > 3 s → recuperação automática.
+- Kart preso em barreira: detectar imobilidade > 4 s → recuperação automática.
 - Kart voando (bug de colisão): detectar altura > 2 m → reset de posição.
-- Kart invertido: detectar ângulo > 90° → reset.
+- Kart invertido: detectar ângulo > 85° → reset.
 - Lag spike em multiplayer: predição mantém física local; reconcilia ao receber estado.
+
+### Recuperação segura do jogador
+
+O recovery do jogador só é monitorado depois que a entrada da corrida está habilitada. Ele é acionado exclusivamente por imobilidade, inversão, saída do perímetro recuperável ou risco de segurança; um evento de colisão, independentemente da severidade, nunca é gatilho direto.
+
+Ao recuperar, o kart volta ao ponto configurado mais próximo, alinhado à racing line, com velocidades linear e angular zeradas. Por 3 segundos, colisões com outros karts são ignoradas para evitar uma nova ejeção imediata; colisões com piso e pista permanecem ativas. A proteção é sempre restaurada ao expirar ou quando o componente é desabilitado/destruído.
+
+Os valores iniciais abaixo são hipóteses calibráveis no `TrackConfigurationSO`:
+
+| Parâmetro | Valor inicial |
+|---|---:|
+| Imobilidade contínua | > 4 s |
+| Velocidade considerada imóvel | ≤ 0,2 m/s |
+| Inclinação invertida | > 85° |
+| Altura de risco sobre o recovery | > 2 m |
+| Distância recuperável da racing line | 3 × largura da pista, mínimo 10 m |
+| Proteção kart-contra-kart | 3 s |
 
 ---
 

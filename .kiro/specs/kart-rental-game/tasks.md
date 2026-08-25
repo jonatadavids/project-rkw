@@ -555,9 +555,10 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Critério de conclusão: Kart preso > 4s é reposicionado; colisão forte NÃO aciona_
   - _Testes: PlayMode test com cenários de stuck e colisão_
   - _Evidência: Test green_
-  - _Validação humana: não_
+  - _Validação humana (2026-08-24): recuperação por imobilidade aprovada no Galaxy S25; o fundador confirmou que o kart parado foi recuperado. Direção contrária permanece fora das condições de recovery aprovadas e será tratada separadamente como orientação de sentido/checkpoints._
   - _Ambiente: Unity Editor (PlayMode)_
   - _Risco: Baixo_
+  - _Correção de evidência (2026-08-24): o controller runtime do jogador foi ligado aos recovery points e à racing line do `TrackConfigurationSO`; monitoração fica inativa durante setup/countdown, reposiciona e realinha com velocidades zeradas e aplica proteção kart-contra-kart configurável com cleanup determinístico._
 
 - [x] M2-T11 Property test: Recovery Trigger Conditions (Property 11)
   - **Property 11: Recovery Trigger Conditions**
@@ -565,6 +566,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - Recovery APENAS quando: stuck > 4s, invertido > 85°, fora do perímetro, risco
   - **Validates: Requirements 4.10, 4.11**
   - _Dependências: M2-T10 (recovery deve existir antes de testar)_
+  - _Correção de evidência (2026-08-24): testes determinísticos cobrem os limiares exclusivos, reset do temporizador quando a monitoração está desabilitada ou o kart volta a se mover, seleção do recovery mais próximo, geometria do perímetro e ausência de recovery por colisão isolada._
 
 - [x] M2-T12 Criar KartCategorySO para Escola (6.5 HP) e Rental Sport (13 HP)
   - Criar ScriptableObjects com parâmetros conforme tabela do design

@@ -143,6 +143,7 @@ namespace RKW.Physics
             _shuffledRaceNumbers = BuildShuffledRaceNumbers();
             _playerRaceNumber = _shuffledRaceNumbers[0];
             SpawnedKart = CreatePlayerKart(_trackConfiguration, _shuffledGridSlotIndices, _playerRaceNumber);
+            SetupPlayerRecovery(SpawnedKart, _trackConfiguration);
             // Kept locked until RaceStartController releases it after the
             // countdown — otherwise the player could drive around freely
             // while the setup menu below is still on screen.
@@ -337,6 +338,30 @@ namespace RKW.Physics
             var detector = kart.gameObject.AddComponent<KartCheckpointDetector>();
             detector.Configure(timing);
             return timing;
+        }
+
+        private static void SetupPlayerRecovery(KartDynamics kart, TrackConfigurationSO trackConfiguration)
+        {
+            if (kart == null || trackConfiguration == null)
+            {
+                return;
+            }
+
+            var recoveryPoints = new List<Vector3>();
+            for (var i = 0; i < trackConfiguration.RecoveryPoints.Count; i++)
+            {
+                recoveryPoints.Add(trackConfiguration.RecoveryPoints[i].WorldPosition);
+            }
+
+            kart.gameObject.AddComponent<KartRecoveryController>().Configure(
+                kart.GetComponent<KartPrototypeInput>(), recoveryPoints,
+                trackConfiguration.RacingSplinePoints, trackConfiguration.TrackWidthMeters,
+                trackConfiguration.RecoveryStuckSeconds,
+                trackConfiguration.RecoveryStoppedSpeedMetersPerSecond,
+                trackConfiguration.RecoveryInvertedDegrees,
+                trackConfiguration.RecoverySafetyHeightMeters,
+                trackConfiguration.RecoveryCollisionGraceSeconds,
+                trackConfiguration.RecoveryPerimeterMultiplier);
         }
 
         private static void CreateLighting()
