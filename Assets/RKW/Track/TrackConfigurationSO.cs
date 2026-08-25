@@ -136,6 +136,14 @@ namespace RKW.Track
         [SerializeField] private TrackAreaBounds[] escapeAreas = Array.Empty<TrackAreaBounds>();
         [SerializeField] private NamedPoint[] recoveryPoints = Array.Empty<NamedPoint>();
 
+        [Header("Player recovery")]
+        [Min(0.1f)] [SerializeField] private float recoveryStuckSeconds = 4f;
+        [Min(0f)] [SerializeField] private float recoveryStoppedSpeedMetersPerSecond = 0.2f;
+        [Range(1f, 180f)] [SerializeField] private float recoveryInvertedDegrees = 85f;
+        [Min(0.1f)] [SerializeField] private float recoverySafetyHeightMeters = 2f;
+        [Min(0f)] [SerializeField] private float recoveryCollisionGraceSeconds = 3f;
+        [Min(1f)] [SerializeField] private float recoveryPerimeterMultiplier = 3f;
+
         public string TrackConfigurationId => trackConfigurationId;
         public string TrackId => trackId;
         public string DisplayName => displayName;
@@ -156,6 +164,12 @@ namespace RKW.Track
         public IReadOnlyList<NamedPoint> SignalPosts => signalPosts;
         public IReadOnlyList<TrackAreaBounds> EscapeAreas => escapeAreas;
         public IReadOnlyList<NamedPoint> RecoveryPoints => recoveryPoints;
+        public float RecoveryStuckSeconds => recoveryStuckSeconds;
+        public float RecoveryStoppedSpeedMetersPerSecond => recoveryStoppedSpeedMetersPerSecond;
+        public float RecoveryInvertedDegrees => recoveryInvertedDegrees;
+        public float RecoverySafetyHeightMeters => recoverySafetyHeightMeters;
+        public float RecoveryCollisionGraceSeconds => recoveryCollisionGraceSeconds;
+        public float RecoveryPerimeterMultiplier => recoveryPerimeterMultiplier;
 
         /// <summary>
         /// Checks that every field required by Requirement 16.2 is actually

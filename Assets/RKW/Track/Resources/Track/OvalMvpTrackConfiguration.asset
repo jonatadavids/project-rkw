@@ -179,3 +179,9 @@ MonoBehaviour:
     worldPosition: {x: 0, y: 0.5, z: -14}
   - pointId: Recovery_Back
     worldPosition: {x: 0, y: 0.5, z: 14}
+  recoveryStuckSeconds: 4
+  recoveryStoppedSpeedMetersPerSecond: 0.2
+  recoveryInvertedDegrees: 85
+  recoverySafetyHeightMeters: 2
+  recoveryCollisionGraceSeconds: 3
+  recoveryPerimeterMultiplier: 3
