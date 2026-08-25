@@ -23,17 +23,19 @@ namespace RKW.Physics
         // previously saved entry (still on the device, just never read
         // again) and starts a clean history from here on, without needing
         // any on-device file access.
-        private const string HistoryKey = "RKW_LapRecordHistory_v2";
+        private const string HistoryKey = "RKW_LapRecordHistory_v3";
         private const int MaxEntries = 200;
         private const char EntrySeparator = ';';
         private const char FieldSeparator = ',';
 
-        /// <summary>Appends a lap to the persisted history, trimming the oldest entries beyond <see cref="MaxEntries"/>. See <see cref="LapRecord.TrackSignature"/> for why <paramref name="trackSignature"/> matters.</summary>
-        public static void RecordLap(float lapTimeSeconds, long unixTimestampSeconds, string playerName, string trackSignature)
+        /// <summary>Appends a lap to the persisted history, trimming the oldest entries beyond <see cref="MaxEntries"/>. The supplied scope prevents comparisons across tracks or kart categories.</summary>
+        public static void RecordLap(float lapTimeSeconds, long unixTimestampSeconds, string playerName,
+            PrototypeCompetitiveScope scope)
         {
             var history = new List<LapRecord>(LoadHistory())
             {
-                new LapRecord(lapTimeSeconds, unixTimestampSeconds, playerName, trackSignature)
+                new LapRecord(lapTimeSeconds, unixTimestampSeconds, playerName,
+                    scope.TrackSignature, scope.KartCategoryId)
             };
 
             if (history.Count > MaxEntries)
@@ -52,7 +54,7 @@ namespace RKW.Physics
             return Decode(raw);
         }
 
-        private static string Encode(List<LapRecord> records)
+        internal static string Encode(List<LapRecord> records)
         {
             var entries = new string[records.Count];
             for (var i = 0; i < records.Count; i++)
@@ -69,13 +71,14 @@ namespace RKW.Physics
                 entries[i] = record.LapTimeSeconds.ToString(CultureInfo.InvariantCulture)
                     + FieldSeparator + record.UnixTimestampSeconds.ToString(CultureInfo.InvariantCulture)
                     + FieldSeparator + record.TrackSignature
+                    + FieldSeparator + record.KartCategoryId
                     + FieldSeparator + record.PlayerName;
             }
 
             return string.Join(EntrySeparator.ToString(), entries);
         }
 
-        private static LapRecord[] Decode(string raw)
+        internal static LapRecord[] Decode(string raw)
         {
             if (string.IsNullOrEmpty(raw))
             {
@@ -91,21 +94,24 @@ namespace RKW.Physics
                     continue;
                 }
 
-                // Split into at most 4 fields — the name itself is never
+                // Split into at most 5 fields — the name itself is never
                 // expected to contain a comma (PlayerNameStore strips them),
                 // but be defensive rather than silently drop an entry if it
                 // somehow does.
-                var fields = entry.Split(new[] { FieldSeparator }, 4);
+                var fields = entry.Split(new[] { FieldSeparator }, 5);
                 // Round 7 wrote a 2-field format (no name); round 23
                 // (2026-08-24) added a 4th field (TrackSignature, see
                 // LapRecord) ahead of the name — skip anything that isn't
-                // today's 4-field format rather than crash. This also means
+                // today's 5-field format rather than crash. The fifth field
+                // makes kart category explicit; older records cannot be
+                // migrated safely because their originating category was
+                // never persisted, so they are intentionally ignored.
                 // every record written before this change is silently
                 // dropped on first load after updating — exactly the
                 // "reiniciar o melhor tempo" the founder asked for, as a
                 // one-time side effect of the fix, not something to redo
                 // every track change afterwards.
-                if (fields.Length != 4)
+                if (fields.Length != 5 || string.IsNullOrEmpty(fields[2]) || string.IsNullOrEmpty(fields[3]))
                 {
                     continue;
                 }
@@ -120,7 +126,7 @@ namespace RKW.Physics
                     continue;
                 }
 
-                records.Add(new LapRecord(lapTime, timestamp, fields[3], fields[2]));
+                records.Add(new LapRecord(lapTime, timestamp, fields[4], fields[2], fields[3]));
             }
 
             return records.ToArray();

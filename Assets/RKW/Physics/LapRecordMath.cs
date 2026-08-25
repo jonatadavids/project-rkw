@@ -27,13 +27,18 @@ namespace RKW.Physics
         // call site in tests/production code compiles unchanged; empty is
         // treated as "unknown track" wherever this is filtered.
         public readonly string TrackSignature;
+        // Comparison category captured at race setup. Empty only exists for
+        // legacy/in-memory callers; persisted v3 records require it.
+        public readonly string KartCategoryId;
 
-        public LapRecord(float lapTimeSeconds, long unixTimestampSeconds, string playerName, string trackSignature = "")
+        public LapRecord(float lapTimeSeconds, long unixTimestampSeconds, string playerName,
+            string trackSignature = "", string kartCategoryId = "")
         {
             LapTimeSeconds = lapTimeSeconds;
             UnixTimestampSeconds = unixTimestampSeconds;
             PlayerName = playerName ?? string.Empty;
             TrackSignature = trackSignature ?? string.Empty;
+            KartCategoryId = kartCategoryId ?? string.Empty;
         }
     }
 
@@ -92,6 +97,31 @@ namespace RKW.Physics
             for (var i = 0; i < records.Count; i++)
             {
                 if (records[i].TrackSignature == trackSignature)
+                {
+                    result.Add(records[i]);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Keeps only laps comparable in the local prototype: same track and
+        /// same kart category, using case-sensitive ordinal identity.
+        /// </summary>
+        public static List<LapRecord> FilterByComparisonScope(
+            IReadOnlyList<LapRecord> records, PrototypeCompetitiveScope scope)
+        {
+            var result = new List<LapRecord>();
+            if (records == null)
+            {
+                return result;
+            }
+
+            for (var i = 0; i < records.Count; i++)
+            {
+                if (string.Equals(records[i].TrackSignature, scope.TrackSignature, System.StringComparison.Ordinal)
+                    && string.Equals(records[i].KartCategoryId, scope.KartCategoryId, System.StringComparison.Ordinal))
                 {
                     result.Add(records[i]);
                 }

@@ -225,5 +225,78 @@ namespace RKW.Physics.Tests.EditMode
 
             Assert.That(filtered, Is.Empty);
         }
+
+        [Test]
+        public void FilterByComparisonScope_SeparatesKartCategoriesOnSameTrack()
+        {
+            var records = new List<LapRecord>
+            {
+                new LapRecord(41f, 1, "Rental", "239m", "rental-sport"),
+                new LapRecord(35f, 2, "Plus", "239m", "sport-plus"),
+                new LapRecord(40f, 3, "Rental 2", "239m", "rental-sport"),
+                new LapRecord(30f, 4, "Outra pista", "300m", "rental-sport"),
+            };
+
+            var filtered = LapRecordMath.FilterByComparisonScope(
+                records, new PrototypeCompetitiveScope("239m", "rental-sport"));
+
+            Assert.That(filtered.Count, Is.EqualTo(2));
+            Assert.That(filtered[0].PlayerName, Is.EqualTo("Rental"));
+            Assert.That(filtered[1].PlayerName, Is.EqualTo("Rental 2"));
+        }
+
+        [Test]
+        public void PrototypeCompetitiveScope_UsesOrdinalIdentityAndDistinctStorageKeys()
+        {
+            var rental = new PrototypeCompetitiveScope("239m", "rental-sport");
+            var rentalAgain = new PrototypeCompetitiveScope("239m", "rental-sport");
+            var caseVariant = new PrototypeCompetitiveScope("239m", "Rental-Sport");
+            var plus = new PrototypeCompetitiveScope("239m", "sport-plus");
+
+            Assert.That(rental, Is.EqualTo(rentalAgain));
+            Assert.That(rental, Is.Not.EqualTo(caseVariant));
+            Assert.That(GhostRecordStore.BuildStorageKey(rental, 3),
+                Is.Not.EqualTo(GhostRecordStore.BuildStorageKey(plus, 3)));
+            Assert.That(GhostRecordStore.BuildStorageKey(rental, 3),
+                Is.Not.EqualTo(GhostRecordStore.BuildStorageKey(rental, 5)));
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("   ")]
+        [TestCase(" rental-sport")]
+        [TestCase("rental-sport ")]
+        [TestCase("rental\tsport")]
+        public void PrototypeCompetitiveScope_InvalidCategory_Throws(string categoryId)
+        {
+            Assert.That(() => new PrototypeCompetitiveScope("239m", categoryId),
+                Throws.ArgumentException);
+        }
+
+        [Test]
+        public void LapRecordPersistence_RoundTripPreservesCategoryExactly()
+        {
+            var source = new List<LapRecord>
+            {
+                new LapRecord(42.125f, 123456L, "Piloto", "239m", "rental-sport"),
+            };
+
+            var decoded = LapRecordStore.Decode(LapRecordStore.Encode(source));
+
+            Assert.That(decoded.Length, Is.EqualTo(1));
+            Assert.That(decoded[0].LapTimeSeconds, Is.EqualTo(42.125f).Within(0.0001f));
+            Assert.That(decoded[0].UnixTimestampSeconds, Is.EqualTo(123456L));
+            Assert.That(decoded[0].PlayerName, Is.EqualTo("Piloto"));
+            Assert.That(decoded[0].TrackSignature, Is.EqualTo("239m"));
+            Assert.That(decoded[0].KartCategoryId, Is.EqualTo("rental-sport"));
+        }
+
+        [Test]
+        public void LapRecordPersistence_CategorylessLegacyEntry_IsIgnored()
+        {
+            var decoded = LapRecordStore.Decode("42.125,123456,239m,Piloto");
+
+            Assert.That(decoded, Is.Empty);
+        }
     }
 }

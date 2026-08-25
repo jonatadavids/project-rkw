@@ -1972,8 +1972,10 @@ tarefa recomendada pra próxima conversa, com contexto fresco.
 - Auditar e atualizar `tasks.md` contra o estado real do repositório
   (fantasma, bots, e outros sistemas que já têm código mas talvez não
   estejam marcados) — recomendado como primeira tarefa da próxima sessão.
-- Separar o "fantasma"/melhores tempos por categoria de kart (arquitetura
-  já preparada, implementação ainda não feita) — tarefa própria, maior.
+- Separar o "fantasma"/melhores tempos por categoria de kart (feito no
+  protótipo local por assinatura de pista + `KartCategorySO.CategoryId`;
+  dados antigos sem categoria são ignorados, e o `LeaderboardKey` formal
+  continua reservado para a tarefa que tiver todas as dimensões disponíveis).
 - Fumaça do escapamento — efeito visual ainda não implementado.
 - Física de derrapagem completa, leaderboard por modo, Pista 2, piloto
   sentado no kart, cena de pódio, telão de pista e redesenho da tela de

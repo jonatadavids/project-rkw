@@ -7,7 +7,7 @@ namespace RKW.Physics
 {
     /// <summary>
     /// PlayerPrefs-backed storage for the best-RACE ghost recordings, one
-    /// per track AND per configured lap count (1/3/5). Founder feedback,
+    /// per track, kart category AND configured lap count (1/3/5). Founder feedback,
     /// 2026-08-24 (two rounds): first asked for the ghost to be split by
     /// how many laps the race was configured for ("quando coloca 1 volta é
     /// um fantasma, quando coloca 3 volta é outro fantasma e 5 outra
@@ -28,49 +28,40 @@ namespace RKW.Physics
     /// </summary>
     public static class GhostRecordStore
     {
-        // Round 33 (2026-08-24): same reset as LapRecordStore.HistoryKey
-        // above and for the same reason — old ghost recordings were set
-        // under now-stale kart speed tunings. This also does not yet
-        // separate ghosts by KART CATEGORY (School vs RentalSport vs
-        // SportPlus all still share one ghost per track+lap-count) —
-        // that is a real, separate gap the founder flagged this same
-        // round ("o modelo do kart deve definir o fantasma"); tracked as
-        // a planned follow-up (see docs/30-founder-playtest-log.md rodada
-        // 33 and .kiro/specs/kart-rental-game/tasks.md), not fixed here.
-        private const string KeyPrefix = "RKW_GhostBest_v2_";
+        // v3 adds the kart category to the persisted comparison scope. v2
+        // recordings are intentionally ignored because their source category
+        // was never stored and cannot be inferred safely.
+        private const string KeyPrefix = "RKW_GhostBest_v3_";
         private const char SampleSeparator = ';';
         private const char FieldSeparator = ',';
 
-        /// <summary>Overwrites any previously saved ghost for this track+lap-count — callers only save on a new personal best full-race time, so "overwrite" always means "got faster".</summary>
-        public static void SaveBestGhost(string trackSignature, int lapCount, float raceTimeSeconds, IReadOnlyList<GhostSample> samples)
+        /// <summary>Overwrites any previously saved ghost for this track+category+lap-count — callers only save on a new personal best full-race time, so "overwrite" always means "got faster".</summary>
+        public static void SaveBestGhost(PrototypeCompetitiveScope scope, int lapCount,
+            float raceTimeSeconds, IReadOnlyList<GhostSample> samples)
         {
-            if (string.IsNullOrEmpty(trackSignature) || samples == null || samples.Count == 0)
+            if (samples == null || samples.Count == 0)
             {
                 return;
             }
 
-            PlayerPrefs.SetString(Key(trackSignature, lapCount), Encode(raceTimeSeconds, samples));
+            PlayerPrefs.SetString(BuildStorageKey(scope, lapCount), Encode(raceTimeSeconds, samples));
             PlayerPrefs.Save();
         }
 
-        /// <summary>True and populates the out params if a readable ghost is saved for this track+lap-count; false (no data touched) if there's none, or it's corrupt/an old format.</summary>
-        public static bool TryLoadBestGhost(string trackSignature, int lapCount, out float raceTimeSeconds, out List<GhostSample> samples)
+        /// <summary>True and populates the out params if a readable ghost is saved for this track+category+lap-count; false if there is none or it is corrupt/an old format.</summary>
+        public static bool TryLoadBestGhost(PrototypeCompetitiveScope scope, int lapCount,
+            out float raceTimeSeconds, out List<GhostSample> samples)
         {
             raceTimeSeconds = 0f;
             samples = null;
 
-            if (string.IsNullOrEmpty(trackSignature))
-            {
-                return false;
-            }
-
-            var raw = PlayerPrefs.GetString(Key(trackSignature, lapCount), string.Empty);
+            var raw = PlayerPrefs.GetString(BuildStorageKey(scope, lapCount), string.Empty);
             return Decode(raw, out raceTimeSeconds, out samples);
         }
 
-        private static string Key(string trackSignature, int lapCount)
+        internal static string BuildStorageKey(PrototypeCompetitiveScope scope, int lapCount)
         {
-            return KeyPrefix + trackSignature + "_" + Mathf.Max(1, lapCount) + "laps";
+            return KeyPrefix + scope.ToStorageKeySegment() + "_" + Mathf.Max(1, lapCount) + "laps";
         }
 
         private static string Encode(float raceTimeSeconds, IReadOnlyList<GhostSample> samples)

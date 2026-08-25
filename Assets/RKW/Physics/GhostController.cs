@@ -31,7 +31,7 @@ namespace RKW.Physics
     /// recording just contains whatever really happened at each lap
     /// transition) and directly answers "did I beat the ghost overall" —
     /// the ghost's own finish time IS the number to beat. One best
-    /// recording is kept per track PER CONFIGURED LAP COUNT (1/3/5 — see
+    /// recording is kept per track, kart category and configured lap count (1/3/5 — see
     /// <see cref="GhostRecordStore"/>), matching the founder's original
     /// suggestion, which turns out to be exactly correct once the thing
     /// being compared is the whole race.
@@ -52,7 +52,7 @@ namespace RKW.Physics
         private TimingManagerLite _timing;
         private Transform _playerTransform;
         private Transform _ghostVisual;
-        private string _trackSignature = string.Empty;
+        private PrototypeCompetitiveScope _scope;
         private int _targetLaps = 1;
 
         private readonly List<GhostSample> _recordingBuffer = new List<GhostSample>();
@@ -64,7 +64,8 @@ namespace RKW.Physics
         private List<GhostSample> _bestRaceSamples;
         private float _bestRaceTimeSeconds = float.MaxValue;
 
-        public void Configure(TimingManagerLite timing, Transform playerTransform, Transform ghostVisual, string trackSignature, int targetLaps)
+        public void Configure(TimingManagerLite timing, Transform playerTransform, Transform ghostVisual,
+            PrototypeCompetitiveScope scope, int targetLaps)
         {
             if (_timing != null)
             {
@@ -74,7 +75,7 @@ namespace RKW.Physics
             _timing = timing;
             _playerTransform = playerTransform;
             _ghostVisual = ghostVisual;
-            _trackSignature = trackSignature ?? string.Empty;
+            _scope = scope;
             _targetLaps = Mathf.Max(1, targetLaps);
 
             _recordingBuffer.Clear();
@@ -83,7 +84,7 @@ namespace RKW.Physics
             _raceValid = true;
             _raceComplete = false;
 
-            if (GhostRecordStore.TryLoadBestGhost(_trackSignature, _targetLaps, out var loadedRaceTime, out var loadedSamples))
+            if (GhostRecordStore.TryLoadBestGhost(_scope, _targetLaps, out var loadedRaceTime, out var loadedSamples))
             {
                 _bestRaceSamples = loadedSamples;
                 _bestRaceTimeSeconds = loadedRaceTime;
@@ -200,7 +201,7 @@ namespace RKW.Physics
 
             _bestRaceTimeSeconds = raceTimeSeconds;
             _bestRaceSamples = new List<GhostSample>(_recordingBuffer);
-            GhostRecordStore.SaveBestGhost(_trackSignature, _targetLaps, raceTimeSeconds, _bestRaceSamples);
+            GhostRecordStore.SaveBestGhost(_scope, _targetLaps, raceTimeSeconds, _bestRaceSamples);
         }
     }
 }

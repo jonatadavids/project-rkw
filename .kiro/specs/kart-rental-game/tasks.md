@@ -1122,7 +1122,7 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
     2026-08-24). Implementado direto em RKW.Physics (não RKW.Telemetry):
     `GhostMath` (interpolação pura, testada), `GhostRecordStore`
     (persistência local por PlayerPrefs, chaveada pela mesma "assinatura
-    de traçado" do LapRecordStore — não por LeaderboardKey) e
+    de traçado" e categoria do LapRecordStore — não por LeaderboardKey) e
     `GhostController` (grava a 10 Hz, não 30 Hz; sem limite/budget de
     tamanho comprimido; reproduz sem física/colisão, como pedido). NÃO
     substitui esta task: faltam a assembly RKW.Telemetry formal, a
@@ -1157,6 +1157,12 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
     anterior daquele número de voltas. Ainda não confirmado pelo fundador
     dirigindo. Continua fora do escopo formal desta task pelos mesmos
     motivos acima._
+  - _Nota (2026-08-24, correção posterior): o protótipo local passou a
+    separar ghost e melhores voltas por assinatura de pista **e**
+    `KartCategorySO.CategoryId`. Dados v2 sem categoria são ignorados porque
+    não há migração confiável possível. A chave é apenas o escopo comparável
+    disponível hoje; não se declara como `LeaderboardKey` completo. M4-T06
+    permanece [ ] com todos os critérios formais originais preservados._
 
 - [ ] M4-T07 Property test: Ghost Zero Physics Interference (Property 31)
   - **Property 31: Ghost Zero Physics Interference**
