@@ -334,10 +334,43 @@ namespace RKW.Physics
             DrawPedal(throttleZone, _throttleVisualIntensity, _throttleTexture, PedalNeutralColor, "ACELERADOR", scale);
 
             // Speed HUD
+            // Round 37 founder feedback: "o velocimetro continua entre o
+            // botao de mudanca de camera" -- this used to sit bottom-left
+            // (safe.x+20, near Screen.height-safe.yMax), the exact same
+            // corner as CameraViewToggleButton/KartCategoryToggleButton,
+            // so it visually collided with them. Moved to top-center
+            // (nothing else uses that spot -- TimingHUD/RaceStandingsHud
+            // are top-RIGHT, the steering wheel/pedals are bottom) and
+            // made noticeably bigger (22pt -> 40pt) per his "mais evidente
+            // (maior)" request. Round 38 (1st pass): that top-center spot
+            // turned out to already be occupied by RaceRestartButton's
+            // "REINICIAR" button (y = 8*scale to 42*scale) -- pushed this
+            // HUD down to clear it, but not far enough: RaceManager's
+            // always-on "META: N VOLTAS - BOTS: X" label (y = 46*scale to
+            // 72*scale) and its temporary per-lap toast ("VOLTA N -
+            // tempo", y = 82*scale to 122*scale) are ALSO in this same
+            // top-center column and got missed the first time -- that is
+            // the "outra informacao" he then reported colliding. Round 38
+            // (2nd pass): pushed further down, past all three (clear at
+            // 122*scale), and switched from safe-area-centered
+            // (safe.center.x) to screen-width-centered
+            // ((Screen.width - width) * 0.5f) to match how
+            // RaceRestartButton/the META label/the toast all center
+            // themselves -- that mismatch was the actual cause of his
+            // "nao esta centralizado com o reiniciar" report (two
+            // different centering formulas can disagree whenever the
+            // device's safe area isn't perfectly symmetric). Also dropped
+            // "grip X.XX" from the display:
+            // it's an internal physics debug value (0-1, how much lateral
+            // grip is currently available -- drops during a slide, recovers
+            // after) with no clear player-facing meaning, which is exactly
+            // why he wasn't sure it was relevant -- GripRatio itself is
+            // untouched in code, just no longer shown on this HUD.
             var hudStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = Mathf.RoundToInt(22f * scale),
+                fontSize = Mathf.RoundToInt(40f * scale),
                 fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.UpperCenter,
                 normal = { textColor = Color.white }
             };
             var motionLabel = _dynamics.SignedForwardSpeedKph < -0.5f ? "RÉ " : string.Empty;
@@ -349,8 +382,16 @@ namespace RKW.Physics
             var slipstreamLabel = _dynamics.SlipstreamDragReduction > 0.001f
                 ? $"  •  VÁCUO {_dynamics.SlipstreamDragReduction * 100f:0}%"
                 : string.Empty;
-            GUI.Label(new Rect(safe.x + 20f, Screen.height - safe.yMax + 14f, 460f * scale, 46f * scale),
-                $"{motionLabel}{_dynamics.SpeedKph:0} km/h  •  grip {_dynamics.GripRatio:0.00}{slipstreamLabel}", hudStyle);
+            var speedHudWidth = 560f * scale;
+            // Round 38 (2nd pass): RaceRestartButton (y 8-42), RaceManager's
+            // META label (y 46-72) and its per-lap toast (y 82-122) all
+            // share this top-center column -- start below all three, and
+            // center on Screen.width like they do (not safe.center.x) so
+            // this HUD lines up with them instead of drifting off-center
+            // on devices with an asymmetric safe area.
+            var speedHudRect = new Rect((Screen.width - speedHudWidth) * 0.5f, 130f * scale,
+                speedHudWidth, 56f * scale);
+            GUI.Label(speedHudRect, $"{motionLabel}{_dynamics.SpeedKph:0} km/h{slipstreamLabel}", hudStyle);
         }
 
         /// <summary>

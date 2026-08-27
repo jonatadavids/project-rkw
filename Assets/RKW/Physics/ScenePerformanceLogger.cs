@@ -48,11 +48,25 @@ namespace RKW.Physics
             _scratchTriangleCounts.Clear();
 
             var meshFilters = FindObjectsOfType<MeshFilter>();
+            var skippedNonReadableCount = 0;
             for (var i = 0; i < meshFilters.Length; i++)
             {
                 var mesh = meshFilters[i] != null ? meshFilters[i].sharedMesh : null;
                 if (mesh == null)
                 {
+                    continue;
+                }
+
+                // Round 39 (continuation 6): most imported models have
+                // Read/Write disabled (the normal setting for a mobile
+                // build) -- mesh.triangles logs an error and returns
+                // empty on those instead of throwing, so this used to
+                // spam dozens of error logs per race (a likely frame
+                // hitch) while still silently under-counting the total.
+                // See this class's own doc comment above.
+                if (!mesh.isReadable)
+                {
+                    skippedNonReadableCount++;
                     continue;
                 }
 
@@ -65,9 +79,13 @@ namespace RKW.Physics
             var summary = ScenePerformanceMath.Summarize(_scratchTriangleCounts);
             var withinBudget = ScenePerformanceMath.IsWithinBudget(summary, MaxTriangles, MaxRenderersAsDrawCallProxy);
             var status = withinBudget ? "OK" : "ACIMA DO BUDGET";
+            var skippedNote = skippedNonReadableCount > 0
+                ? $" (obs: {skippedNonReadableCount} malha(s) não contada(s) -- não são legíveis em runtime, número real é maior)"
+                : "";
 
             Debug.Log($"[RKW-PERF] {status} — triângulos: {summary.TriangleCount} (limite {MaxTriangles}), " +
-                $"renderers (proxy de draw calls): {summary.RendererCount} (limite {MaxRenderersAsDrawCallProxy})");
+                $"renderers (proxy de draw calls): {summary.RendererCount} (limite {MaxRenderersAsDrawCallProxy})" +
+                skippedNote);
         }
 
         private void OnDestroy()

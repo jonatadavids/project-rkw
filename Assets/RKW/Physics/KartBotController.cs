@@ -107,6 +107,19 @@ namespace RKW.Physics
         private const float RacecraftEngagementRangeMeters = 12f;
         private const float RacecraftMaxLateralOffsetMeters = 1.6f;
 
+        // Round 40 (2026-08-26): "adaptive cruise control" style following
+        // cap -- see KartBotMath.CalculateFollowingSafeSpeedMetersPerSecond's
+        // doc for the full reasoning (closes the round-23 documented gap:
+        // bots had no notion of a slow/stationary kart directly ahead).
+        // Reuses RacecraftEngagementRangeMeters above as the caution-zone
+        // distance -- same "how far do we care about another kart" scale
+        // already established in this class, no reason for a second one.
+        // Lane half-width: kart's own BoxCollider is 1m wide (see
+        // CreateKartInstance), so 1.3m comfortably covers "roughly in the
+        // same lane" without reacting to a rival already well alongside.
+        private const float RivalFollowLaneHalfWidthMeters = 1.3f;
+        private const float RivalMinFollowGapMeters = 3.5f;
+
         // Round-22 founder feedback: "no médio/difícil os bots ficam
         // confusos, no fácil não" — see KartBotMath.ShouldApplyRacecraftBias
         // XML doc for the full diagnosis (the speed-based cornering gate
@@ -415,12 +428,19 @@ namespace RKW.Physics
             var aggressiveness = KartBotMath.GetRacecraftAggressiveness01(_difficulty);
             var canApplyRacecraft = KartBotMath.ShouldApplyRacecraftBias(
                 isCorneringPhase, turnAngleRadians, MaxBendRadiansForRacecraft);
+
+            // Round 40: moved out of the racecraft-only gate below so the
+            // ahead-rival distance/lateral/speed are also available for
+            // the following-speed cap further down, regardless of
+            // difficulty/cornering phase (a bot must never ram a rival
+            // ahead even with racecraft disabled, e.g. Easy difficulty).
+            FindNearestRivals(
+                out var distanceBehindMeters, out var lateralOffsetBehindMeters,
+                out var distanceAheadMeters, out var lateralOffsetAheadMeters,
+                out var aheadSpeedKph);
+
             if (canApplyRacecraft && aggressiveness > 0f)
             {
-                FindNearestRivals(
-                    out var distanceBehindMeters, out var lateralOffsetBehindMeters,
-                    out var distanceAheadMeters, out var lateralOffsetAheadMeters);
-
                 var defensiveOffset = KartBotMath.CalculateDefensiveLateralOffsetMeters(
                     distanceBehindMeters, lateralOffsetBehindMeters,
                     RacecraftEngagementRangeMeters, RacecraftMaxLateralOffsetMeters, aggressiveness);
@@ -461,19 +481,36 @@ namespace RKW.Physics
             var targetSpeedMps = KartBotMath.CalculateMaxCorneringSpeedMetersPerSecond(
                 turnAngleRadians, availableDistanceMeters, _dynamics.MaxLateralAcceleration, safetyMargin);
 
+            // Round 40: following-speed cap from the rival directly ahead
+            // (see KartBotMath.CalculateFollowingSafeSpeedMetersPerSecond)
+            // -- infinity (no cap) when there is no rival close/aligned
+            // enough to matter. Combined with the cornering cap via a
+            // plain minimum, so whichever is more restrictive wins.
+            var followSafeSpeedMps = KartBotMath.CalculateFollowingSafeSpeedMetersPerSecond(
+                distanceAheadMeters, lateralOffsetAheadMeters, aheadSpeedKph / 3.6f,
+                RivalFollowLaneHalfWidthMeters, RivalMinFollowGapMeters, RacecraftEngagementRangeMeters);
+            var hasFollowCap = !float.IsPositiveInfinity(followSafeSpeedMps);
+
             float throttle;
             float brake;
-            if (isCorneringPhase)
+            if (isCorneringPhase || hasFollowCap)
             {
-                // Close enough to the corner that its speed limit matters:
-                // accelerate toward it if under, brake toward it if over.
-                throttle = KartBotMath.CalculateThrottleForTargetSpeed(currentSpeedMps, targetSpeedMps, minThrottle, maxThrottle);
-                brake = KartBotMath.CalculateBrakeForTargetSpeed(currentSpeedMps, targetSpeedMps, maxCornerBrake);
+                // Close enough to the corner that its speed limit matters,
+                // and/or a rival directly ahead limits how fast it is safe
+                // to go: accelerate toward the more restrictive of the two
+                // if under, brake toward it if over. Outside a corner
+                // approach, targetSpeedMps itself is not meaningful yet,
+                // so the follow cap alone (when present) is used.
+                var effectiveTargetSpeedMps = isCorneringPhase
+                    ? Mathf.Min(targetSpeedMps, followSafeSpeedMps)
+                    : followSafeSpeedMps;
+                throttle = KartBotMath.CalculateThrottleForTargetSpeed(currentSpeedMps, effectiveTargetSpeedMps, minThrottle, maxThrottle);
+                brake = KartBotMath.CalculateBrakeForTargetSpeed(currentSpeedMps, effectiveTargetSpeedMps, maxCornerBrake);
             }
             else
             {
-                // Corner is still several seconds away at this speed —
-                // no reason to lift yet.
+                // Corner is still several seconds away at this speed and
+                // no rival ahead limits our pace — no reason to lift yet.
                 throttle = maxThrottle;
                 brake = 0f;
             }
@@ -502,12 +539,14 @@ namespace RKW.Physics
         /// </summary>
         private void FindNearestRivals(
             out float distanceBehindMeters, out float lateralOffsetBehindMeters,
-            out float distanceAheadMeters, out float lateralOffsetAheadMeters)
+            out float distanceAheadMeters, out float lateralOffsetAheadMeters,
+            out float aheadSpeedKph)
         {
             var closestBehind = float.MaxValue;
             var closestBehindLateral = 0f;
             var closestAhead = float.MaxValue;
             var closestAheadLateral = 0f;
+            var closestAheadSpeedKph = 0f;
 
             var activeKarts = KartDynamics.AllActiveKarts;
             for (var i = 0; i < activeKarts.Count; i++)
@@ -532,6 +571,7 @@ namespace RKW.Physics
                 {
                     closestAhead = local.z;
                     closestAheadLateral = local.x;
+                    closestAheadSpeedKph = other.SpeedKph;
                 }
             }
 
@@ -539,6 +579,7 @@ namespace RKW.Physics
             lateralOffsetBehindMeters = closestBehindLateral;
             distanceAheadMeters = closestAhead < float.MaxValue ? closestAhead : 0f;
             lateralOffsetAheadMeters = closestAheadLateral;
+            aheadSpeedKph = closestAheadSpeedKph;
         }
 
         private void UpdateStuckDetection()

@@ -55,24 +55,35 @@ namespace RKW.Physics
             var scale = Mathf.Max(1f, Screen.height / 720f);
             if (_buttonStyle == null)
             {
+                // Round 37: shrunk font / widened+heightened the button
+                // (was 210x42 @15pt) so the longer "(toque p/ trocar)"
+                // label fits on one line instead of overflowing/clipping.
                 _buttonStyle = new GUIStyle(GUI.skin.button)
                 {
-                    fontSize = Mathf.RoundToInt(15f * scale)
+                    fontSize = Mathf.RoundToInt(13f * scale),
+                    wordWrap = true
                 };
             }
 
             var safe = Screen.safeArea;
-            var width = 210f * scale;
-            var height = 42f * scale;
+            var width = 260f * scale;
+            var height = 46f * scale;
             // Stacked directly under CameraViewToggleButton, same top-left
             // corner — see that button's own class doc for why every other
             // screen corner is already taken by another HUD element.
             var y = Screen.height - safe.yMax + 8f * scale + height + 6f * scale;
             var rect = new Rect(safe.xMin + 8f * scale, y, width, height);
 
-            // Label names the kart you'll SWITCH TO, matching the camera
-            // toggle button's own convention.
-            var label = _usingV2 ? "KART: 13 HP · 60 km/h" : "KART: 18 HP · 80 km/h";
+            // Round 37 founder feedback: "os botoes de selecionar parece
+            // invertido" -- this used to name the kart you'd SWITCH TO
+            // (matching the camera toggle button's convention), but a
+            // label naming a DIFFERENT kart than the one you're currently
+            // driving reads as backwards/wrong once you compare it against
+            // how the kart actually feels on track. Now shows the kart
+            // you're CURRENTLY driving, with an explicit "toque para
+            // trocar" so it's still clear this is a toggle, not just a
+            // status readout.
+            var label = _usingV2 ? "KART: 18 HP · 80 km/h (toque p/ trocar)" : "KART: 13 HP · 60 km/h (toque p/ trocar)";
             if (GUI.Button(rect, label, _buttonStyle))
             {
                 _usingV2 = !_usingV2;

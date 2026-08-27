@@ -55,6 +55,16 @@ namespace RKW.Physics
         // preserved from the source file. See
         // docs/30-founder-playtest-log.md rodada 32.
         internal const string KartVisualV2ResourcePath = "KartPhysics/Models/KartV2";
+        // Round 38 founder feedback: "ao lancar o carro fantasma ele
+        // pega o carro de 60" -- the ghost's best-lap DATA was already
+        // correctly scoped per kart category (see
+        // PrototypeCompetitiveScope/kartCategoryId in
+        // OnRaceSetupConfirmed), but its VISUAL MESH was hardcoded to
+        // KartVisualResourcePath regardless of which kart the player is
+        // actually driving. Tracked here, updated by RebuildKartVisual
+        // (the only place the player's kart model ever changes), and
+        // read when the ghost visual is created so it always matches.
+        private static string _currentPlayerKartModelResourcePath = KartVisualResourcePath;
         private const float KartVisualTargetLengthMeters = 1.8f;
 
         // Founder playtest feedback, 2026-08-20 (round 12): "o ideal seria
@@ -136,9 +146,61 @@ namespace RKW.Physics
             }
 
             UnityEngine.Physics.gravity = new Vector3(0f, -9.81f, 0f);
+
+            // Round 36: track choice now comes from TrackSelectMenu (shown
+            // FIRST, before any track/kart geometry exists) instead of the
+            // old build-time UseTechnicalCircuit2 constant — see that
+            // field's own comment above and OnTrackSelected/BeginRace
+            // below. Everything that used to run directly in Awake() (track
+            // build, kart spawn, camera, timing, the other pre-race
+            // buttons, RaceSetupMenu) now runs inside BeginRace(), once
+            // this first screen confirms.
+            var trackMenuObject = new GameObject("TrackSelectMenu");
+            var trackMenu = trackMenuObject.AddComponent<TrackSelectMenu>();
+            trackMenu.Configure(OnTrackSelected);
+        }
+
+        // internal (was private): KartPhysicsPrototypeTests (PlayMode)
+        // calls this directly to simulate the TrackSelectMenu tap a real
+        // player would make -- see AssemblyInfo.cs's round-36 note.
+        internal void OnTrackSelected(bool useTechnicalCircuit2)
+        {
+            UseTechnicalCircuit2 = useTechnicalCircuit2;
+            BeginRace();
+        }
+
+        /// <summary>
+        /// Builds the track/kart/camera/timing and every other pre-race
+        /// object — everything Awake() used to do unconditionally before
+        /// round 36 made track choice a runtime decision (see
+        /// TrackSelectMenu's class doc). Runs once, right after
+        /// <see cref="OnTrackSelected"/> sets
+        /// <see cref="UseTechnicalCircuit2"/> from the player's pick.
+        /// </summary>
+        private void BeginRace()
+        {
             _trackConfiguration = LoadTrackConfiguration();
             CreateLighting();
-            CreateCourse();
+            if (UseTechnicalCircuit2)
+            {
+                CreateCourseTechnicalCircuit2();
+            }
+            else
+            {
+                CreateCourse();
+            }
+            // Round 40: see CombineStaticTrackGeometryForBatching's own
+            // doc comment above for the full root-cause writeup. Runs
+            // right after track geometry exists and before any kart is
+            // spawned, so only the track's own isStatic-flagged pieces are
+            // ever in scope.
+            CombineStaticTrackGeometryForBatching();
+            // Round 37 founder feedback: "falta nas 2 pistas o desenho da
+            // largada no posicionamento do kart" -- the start/finish LINE
+            // already existed, but the individual grid BOXES (one per
+            // starting slot) were never drawn, so a player had no visual
+            // cue for exactly where each of the 10 karts should line up.
+            CreateGridSlotMarkers(_trackConfiguration);
             _shuffledGridSlotIndices = BuildShuffledGridSlotIndices(_trackConfiguration);
             _shuffledRaceNumbers = BuildShuffledRaceNumbers();
             _playerRaceNumber = _shuffledRaceNumbers[0];
@@ -187,6 +249,66 @@ namespace RKW.Physics
 
         private void OnRaceSetupConfirmed(int laps, int botCount, BotDifficulty difficulty)
         {
+            // Round 37 founder feedback: "quando jogar sozinho a ideia que
+            // o kart sempre saia no primeiro grid de largada, sem ficar
+            // alternando quando for com bot pode alternar" -- the player's
+            // grid slot is normally a genuine random draw (round 16,
+            // shared with bots so nobody is always P1), but in SOZINHO
+            // mode (botCount == 0, forced by RaceSetupMenu's own
+            // SelectMode) there are no bots to be fair to, so reposition
+            // to pole position (grid slot 0) instead of whatever slot the
+            // shared shuffle happened to give the player.
+            // Round 38 founder feedback: "o modo sozinho continua largando
+            // em qualquer posicao... nao em primeiro" -- re-reviewed this
+            // whole block plus KartRecoveryController, RaceStartController,
+            // RaceManager and SpawnBots line by line and found no logic
+            // fault (recovery only ever monitors once InputEnabled is
+            // true, which this block runs before; RaceStartController
+            // never touches position; RaceManager never repositions
+            // karts; SpawnBots does nothing when botCount is 0). Since
+            // static reading alone could not find the bug, logging every
+            // input to this decision plus the exact position actually
+            // applied, so a real device logcat can show whether this
+            // branch is even being entered, with what data, and whether
+            // the position sticks -- see the matching log in
+            // RaceStartController.Update() below for whether anything
+            // moves the kart afterward.
+            var kartPosBeforeLabel = SpawnedKart != null ? SpawnedKart.transform.position.ToString("F2") : "null";
+            Debug.Log("KartPhysicsPrototypeBootstrap: OnRaceSetupConfirmed " +
+                $"botCount={botCount}, gridSlotsCount={(_trackConfiguration != null ? _trackConfiguration.GridSlots.Count : -1)}, " +
+                $"kartPosBefore={kartPosBeforeLabel}.");
+            if (botCount == 0 && _trackConfiguration != null && _trackConfiguration.GridSlots.Count > 0)
+            {
+                var poleSlot = _trackConfiguration.GridSlots[0];
+                var polePosition = poleSlot.WorldPosition;
+                polePosition.y = 0.55f; // same vertical offset CreatePlayerKart uses
+                var poleRotation = Quaternion.Euler(0f, poleSlot.YawDegrees, 0f);
+                var poleBody = SpawnedKart.GetComponent<Rigidbody>();
+                if (poleBody != null)
+                {
+                    // Round 39 (continuation 6) fix: teleport through the
+                    // Rigidbody, not the Transform -- see this block's
+                    // doc comment above (KartDynamics' Rigidbody has
+                    // interpolation enabled, and a Transform-only move
+                    // gets silently reconciled back to the Rigidbody's
+                    // real physics pose a few steps later, which is
+                    // exactly the "modo sozinho não larga na pole" bug).
+                    poleBody.position = polePosition;
+                    poleBody.rotation = poleRotation;
+                    poleBody.linearVelocity = Vector3.zero;
+                    poleBody.angularVelocity = Vector3.zero;
+                }
+                else
+                {
+                    SpawnedKart.transform.SetPositionAndRotation(polePosition, poleRotation);
+                }
+                var poleTargetLabel = polePosition.ToString("F2");
+                var kartPosAfterLabel = SpawnedKart.transform.position.ToString("F2");
+                Debug.Log("KartPhysicsPrototypeBootstrap: solo-mode pole reposition applied -- " +
+                    $"poleSlot.Position={poleSlot.Position}, target={poleTargetLabel}, " +
+                    $"kartPosAfter={kartPosAfterLabel}.");
+            }
+
             var path = _trackConfiguration != null ? _trackConfiguration.BotPathPoints : Array.Empty<Vector3>();
             // Same track-signature scoping as LapRecordStore/GhostController
             // (round 23/24, same day) so leaderboard/ghost data never mixes
@@ -244,7 +366,8 @@ namespace RKW.Physics
             // GhostController's XML doc), and reusing _playerRaceNumber
             // reads correctly ("this is still you, from your best race")
             // instead of inventing an unrelated number.
-            var ghostVisual = CreateKartVisual(ghostRoot.transform, GhostTintColor, _playerRaceNumber);
+            var ghostVisual = CreateKartVisual(ghostRoot.transform, GhostTintColor, _playerRaceNumber,
+                _currentPlayerKartModelResourcePath);
             var ghostControllerObject = new GameObject("GhostController");
             ghostControllerObject.AddComponent<GhostController>()
                 .Configure(_timing, SpawnedKart.transform, ghostVisual, comparisonScope, laps);
@@ -307,11 +430,18 @@ namespace RKW.Physics
         /// </summary>
         private static TrackConfigurationSO LoadTrackConfiguration()
         {
-            var trackConfiguration = Resources.Load<TrackConfigurationSO>("Track/OvalMvpTrackConfiguration");
+            // Round 34: load whichever track's data matches the
+            // UseTechnicalCircuit2 toggle above (Awake() picks the
+            // matching GEOMETRY the same way — the two must stay in sync
+            // or the grid/bot-path data won't match what's actually built).
+            var trackConfigurationResourcePath = UseTechnicalCircuit2
+                ? "Track/TechnicalCircuit2Configuration"
+                : "Track/OvalMvpTrackConfiguration";
+            var trackConfiguration = Resources.Load<TrackConfigurationSO>(trackConfigurationResourcePath);
             if (trackConfiguration == null)
             {
                 Debug.LogWarning("KartPhysicsPrototypeBootstrap: no TrackConfigurationSO found at " +
-                    "Resources/Track/OvalMvpTrackConfiguration.");
+                    $"Resources/{trackConfigurationResourcePath}.");
                 return null;
             }
 
@@ -332,7 +462,10 @@ namespace RKW.Physics
         {
             var timingObject = new GameObject("TimingManager");
             var timing = timingObject.AddComponent<TimingManagerLite>();
-            timing.Configure(3); // 3 checkpoints (not counting start/finish)
+            // Round 34: the oval has 3 non-start/finish checkpoints (CP1-3);
+            // Circuit2 has 11 (one per filleted vertex, CP0-CP10 — see the
+            // Circuit2 constants/CreateCourseTechnicalCircuit2 below).
+            timing.Configure(UseTechnicalCircuit2 ? 16 : 3);
             timingObject.AddComponent<TimingHUD>();
 
             var detector = kart.gameObject.AddComponent<KartCheckpointDetector>();
@@ -378,6 +511,38 @@ namespace RKW.Physics
             lightObject.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
         }
 
+        /// <summary>
+        /// See the round-40 comment above this method's call site in
+        /// BeginRace for the full root-cause writeup (isStatic alone does
+        /// nothing for procedurally-created-at-runtime geometry -- Unity's
+        /// automatic static batcher only runs at build time). Finds every
+        /// renderer in the scene whose GameObject is already marked
+        /// isStatic (by construction, only the track-building code above
+        /// ever sets that flag -- kart visuals, wheel/steering pivots, and
+        /// HUD are never marked static) and merges them via Unity's own
+        /// documented runtime API for this exact situation.
+        /// </summary>
+        private static void CombineStaticTrackGeometryForBatching()
+        {
+            var allRenderers = FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            var staticObjects = new List<GameObject>();
+            foreach (var renderer in allRenderers)
+            {
+                if (renderer.gameObject.isStatic)
+                {
+                    staticObjects.Add(renderer.gameObject);
+                }
+            }
+
+            if (staticObjects.Count == 0)
+            {
+                return;
+            }
+
+            var batchRoot = new GameObject("StaticTrackGeometry_CombinedBatchRoot");
+            StaticBatchingUtility.Combine(staticObjects.ToArray(), batchRoot);
+        }
+
         private static void CreateCourse()
         {
             // --- GROUND (grass) ---
@@ -412,7 +577,7 @@ namespace RKW.Physics
 
             var groundVisual = GameObject.CreatePrimitive(PrimitiveType.Plane);
             groundVisual.name = "Grass Ground";
-            groundVisual.transform.position = new Vector3(0f, 0.045f, 0f);
+            groundVisual.transform.position = new Vector3(0f, 0.058f, 0f); // round 37: closer to pavement top (0.06) to remove the visible "ranhura" step at the grass/asphalt seam
             groundVisual.transform.localScale = new Vector3(20f, 1f, 12f);
             groundVisual.GetComponent<Renderer>().sharedMaterial = CreateMaterial("Grass", new Color(0.25f, 0.55f, 0.18f));
             Destroy(groundVisual.GetComponent<Collider>());
@@ -539,17 +704,41 @@ namespace RKW.Physics
             // standalone Python model (dense sampling of the TRUE circular
             // arc, multiple lateral offsets) before this was written; see
             // docs/30-founder-playtest-log.md round 21.
-            CreateRibbon("Pavement", pavementCenterline, TrackWidthMeters, 0.12f, asphaltMat, StadiumArcSegmentsPerEnd);
+            CreateRibbon("Pavement", pavementCenterline, TrackWidthMeters, 0.12f, asphaltMat, StadiumArcSegmentsPerEnd,
+                solidCollider: false);
+            // Round 39 (continuation 4): same seamless mesh floor fix as
+            // the Carrera Kart (see CreatePavementMeshFloor's doc comment)
+            // -- confirmed by founder testing to fully resolve the
+            // catch/jump physics feel, so applying it here too even
+            // though the Oval was never reported as badly affected, per
+            // founder request to make this the standard pattern for every
+            // track. Oval's width is constant (unlike Circuit2's
+            // per-point width), so this just fills a same-length array
+            // with TrackWidthMeters before reusing the identical method.
+            var ovalWidths = new float[pavementCenterline.Count];
+            for (var ovalWidthIndex = 0; ovalWidthIndex < ovalWidths.Length; ovalWidthIndex++)
+            {
+                ovalWidths[ovalWidthIndex] = TrackWidthMeters;
+            }
+            CreatePavementMeshFloor("Pavement_MeshFloor", pavementCenterline.ToArray(), ovalWidths, 0.06f);
 
             // --- CURBS (zebras) ---
+            // Round 36 founder feedback: "a zebra ideal... fica bem
+            // próxima as curvas... não aquele bloco grande e travado" —
+            // replaced the two static 4x4m apex blocks with a continuous
+            // checkered strip that hugs the INSIDE (infield) edge of both
+            // semicircle ends the whole way round, built from the same
+            // GenerateStadiumCenterline formula as the pavement/barriers
+            // above (just a smaller radius, so it stays perfectly
+            // concentric with zero extra bookkeeping — same trick already
+            // used for outerBarrierCenterline/innerBarrierCenterline).
             // Non-solid for the same reason as round 18 (raised geometry a
-            // wheel-less rigid-BoxCollider kart can't climb). The old track
-            // had 4 discrete corners to mark; this one is a continuous
-            // curve, so 2 apex markers (widest point of each end) replace
-            // the old 4-corner set — an honest simplification for a shape
-            // that no longer has discrete corners to mark.
-            CreateZebraCurb("Curb_East_Apex", new Vector3(StadiumHalfStraightMeters + StadiumRadiusMeters - TrackWidthMeters * 0.5f + 1f, 0.13f, 0f), new Vector3(4f, 0.08f, 4f));
-            CreateZebraCurb("Curb_West_Apex", new Vector3(-(StadiumHalfStraightMeters + StadiumRadiusMeters - TrackWidthMeters * 0.5f + 1f), 0.13f, 0f), new Vector3(4f, 0.08f, 4f));
+            // wheel-less rigid-BoxCollider kart can't climb).
+            const float CurbWidthMeters = 1.2f;
+            var curbCenterline = GenerateStadiumCenterline(
+                StadiumHalfStraightMeters, StadiumRadiusMeters - (TrackWidthMeters * 0.5f - CurbWidthMeters * 0.5f),
+                StadiumArcSegmentsPerEnd);
+            CreateAlternatingCurbRibbon("Curb", curbCenterline, StadiumArcSegmentsPerEnd, CurbWidthMeters, 0.08f);
 
             // --- BARRIERS (outer wall, full curved ribbon) ---
             // Same ~3m runoff margin established in round 8/18, now applied
@@ -664,6 +853,447 @@ namespace RKW.Physics
         /// color block. Same total footprint and non-solid trigger collider
         /// as before, so this is visual-only and doesn't change driving.
         /// </summary>
+
+        // ============================================================
+        // PISTA 2 — CIRCUITO TÉCNICO (round 34, 2026-08-25)
+        // ============================================================
+        // Founder-approved-for-greybox second track: an irregular ~1001m
+        // closed loop (NOT a stadium — 11 waypoints, each rounded with its
+        // own circular-arc fillet radius), with a technical S-sector
+        // (vertices 7-8-9) and a tight hairpin (vertex 10) near the grid.
+        // Every array below (pavement centerline, outer/inner barrier
+        // rings, per-point width, which edges are arc chords) was computed
+        // and validated — zero self-intersections, minimum real clearance
+        // between non-adjacent sections, cornering-speed/braking-distance
+        // sanity-checked against the REAL kart tuning constants
+        // (wheelbaseMeters/maxSteeringAngleDegrees/lateralGripG/
+        // brakeDeceleration in the Resources/KartPhysics/*.asset files) —
+        // in a standalone Python model before any of this was written,
+        // the same practice this project already established for the
+        // first track (see GenerateStadiumCenterline's own comment).
+        // See docs/30-founder-playtest-log.md round 34 for the full
+        // derivation and claude/status-pista2-planejamento.md (project
+        // docs) for the founder-facing summary, sign-off, and the 6-point
+        // review (grid/width/chicane/kart-radius/bots/checkpoints) this
+        // build responds to.
+        //
+        // Deliberately minimal decoration in this first greybox (see
+        // round 34 log): hairpin-specific local widening beyond the grid
+        // straight, dedicated escape/runoff areas at curves 3/5/7/8/10,
+        // marshal posts/fences/pit building.
+        //
+        // Round 36 (2026-08-25) founder request: "o circuito oval pode
+        // dar o nome de Circuito Oval e deixar selecionável" — this used
+        // to be a build-time `const bool` (flip and rebuild to change
+        // track, the same "pre-race toggle, not a full selection screen"
+        // scope choice made for kart category in round 32). Now a mutable
+        // static field instead, set once per session by
+        // TrackSelectMenu's confirm callback (see
+        // OnTrackSelected/BeginRace below) BEFORE any track/kart geometry
+        // is built — every method below that reads this (LoadTrackConfiguration,
+        // SetupTiming, Awake/BeginRace's own course-building branch) still
+        // reads the exact same field, just no longer compile-time fixed.
+        // Default (true) only matters for the brief window before
+        // TrackSelectMenu's first OnGUI paints.
+        private static bool UseTechnicalCircuit2 = true;
+
+        // Ground plane sized to Circuit2's actual bounding box (it does
+        // NOT sit at the world origin like the oval — the two tracks'
+        // footprints currently overlap in world space, which is fine only
+        // because just one of them is ever built per build via the toggle
+        // above; a real track-select flow will need to either offset one
+        // track far away or destroy/rebuild the scene on selection).
+        private const float Circuit2GroundCenterX = 169.4f;
+        private const float Circuit2GroundCenterZ = -84.6f;
+        private const float Circuit2GroundSizeX = 336.6f;
+        private const float Circuit2GroundSizeZ = 188.3f;
+
+        private static readonly Vector3[] Circuit2Centerline = {new Vector3(88.012f, 0.000f, -134.091f), new Vector3(84.238f, 0.000f, -130.930f), new Vector3(80.481f, 0.000f, -127.751f), new Vector3(77.449f, 0.000f, -124.991f), new Vector3(76.125f, 0.000f, -124.021f), new Vector3(74.762f, 0.000f, -123.107f), new Vector3(73.364f, 0.000f, -122.249f), new Vector3(71.912f, 0.000f, -121.483f), new Vector3(67.372f, 0.000f, -119.581f), new Vector3(62.797f, 0.000f, -117.762f), new Vector3(58.137f, 0.000f, -116.176f), new Vector3(53.335f, 0.000f, -115.101f), new Vector3(48.467f, 0.000f, -114.385f), new Vector3(44.410f, 0.000f, -113.793f), new Vector3(42.802f, 0.000f, -113.465f), new Vector3(41.204f, 0.000f, -113.088f), new Vector3(39.636f, 0.000f, -112.608f), new Vector3(38.122f, 0.000f, -111.976f), new Vector3(36.706f, 0.000f, -111.150f), new Vector3(35.431f, 0.000f, -110.119f), new Vector3(34.335f, 0.000f, -108.899f), new Vector3(33.386f, 0.000f, -107.561f), new Vector3(32.523f, 0.000f, -106.166f), new Vector3(29.997f, 0.000f, -101.939f), new Vector3(29.162f, 0.000f, -100.526f), new Vector3(28.350f, 0.000f, -99.101f), new Vector3(27.588f, 0.000f, -97.647f), new Vector3(26.948f, 0.000f, -96.137f), new Vector3(26.566f, 0.000f, -94.545f), new Vector3(26.655f, 0.000f, -92.914f), new Vector3(27.182f, 0.000f, -91.362f), new Vector3(27.844f, 0.000f, -89.860f), new Vector3(28.488f, 0.000f, -88.351f), new Vector3(30.476f, 0.000f, -83.849f), new Vector3(31.265f, 0.000f, -82.410f), new Vector3(32.110f, 0.000f, -81.003f), new Vector3(32.992f, 0.000f, -79.619f), new Vector3(33.932f, 0.000f, -78.274f), new Vector3(34.984f, 0.000f, -77.016f), new Vector3(36.161f, 0.000f, -75.873f), new Vector3(37.415f, 0.000f, -74.815f), new Vector3(41.241f, 0.000f, -71.716f), new Vector3(45.124f, 0.000f, -68.689f), new Vector3(48.646f, 0.000f, -65.258f), new Vector3(51.895f, 0.000f, -61.558f), new Vector3(53.006f, 0.000f, -60.350f), new Vector3(54.177f, 0.000f, -59.201f), new Vector3(55.420f, 0.000f, -58.129f), new Vector3(56.724f, 0.000f, -57.134f), new Vector3(58.088f, 0.000f, -56.221f), new Vector3(59.518f, 0.000f, -55.418f), new Vector3(61.027f, 0.000f, -54.773f), new Vector3(62.592f, 0.000f, -54.282f), new Vector3(64.191f, 0.000f, -53.916f), new Vector3(65.810f, 0.000f, -53.647f), new Vector3(67.441f, 0.000f, -53.463f), new Vector3(69.078f, 0.000f, -53.359f), new Vector3(70.719f, 0.000f, -53.337f), new Vector3(75.630f, 0.000f, -53.670f), new Vector3(80.536f, 0.000f, -54.080f), new Vector3(84.634f, 0.000f, -54.281f), new Vector3(86.274f, 0.000f, -54.330f), new Vector3(87.912f, 0.000f, -54.247f), new Vector3(89.537f, 0.000f, -54.015f), new Vector3(91.137f, 0.000f, -53.655f), new Vector3(92.706f, 0.000f, -53.173f), new Vector3(94.238f, 0.000f, -52.586f), new Vector3(95.733f, 0.000f, -51.909f), new Vector3(99.799f, 0.000f, -49.156f), new Vector3(101.135f, 0.000f, -48.205f), new Vector3(102.614f, 0.000f, -47.501f), new Vector3(103.397f, 0.000f, -47.256f), new Vector3(105.008f, 0.000f, -46.948f), new Vector3(106.643f, 0.000f, -46.805f), new Vector3(108.283f, 0.000f, -46.762f), new Vector3(113.206f, 0.000f, -46.750f), new Vector3(114.847f, 0.000f, -46.706f), new Vector3(116.482f, 0.000f, -46.564f), new Vector3(118.097f, 0.000f, -46.278f), new Vector3(119.675f, 0.000f, -45.830f), new Vector3(121.207f, 0.000f, -45.242f), new Vector3(122.713f, 0.000f, -44.590f), new Vector3(124.222f, 0.000f, -43.945f), new Vector3(125.739f, 0.000f, -43.319f), new Vector3(127.227f, 0.000f, -42.627f), new Vector3(128.633f, 0.000f, -41.783f), new Vector3(132.418f, 0.000f, -38.639f), new Vector3(136.381f, 0.000f, -35.722f), new Vector3(140.480f, 0.000f, -32.994f), new Vector3(144.335f, 0.000f, -29.937f), new Vector3(148.154f, 0.000f, -26.831f), new Vector3(151.942f, 0.000f, -23.691f), new Vector3(155.490f, 0.000f, -20.280f), new Vector3(156.738f, 0.000f, -19.213f), new Vector3(158.020f, 0.000f, -18.189f), new Vector3(159.373f, 0.000f, -17.263f), new Vector3(160.847f, 0.000f, -16.545f), new Vector3(162.414f, 0.000f, -16.061f), new Vector3(164.019f, 0.000f, -15.723f), new Vector3(165.647f, 0.000f, -15.514f), new Vector3(167.287f, 0.000f, -15.489f), new Vector3(168.922f, 0.000f, -15.621f), new Vector3(170.548f, 0.000f, -15.844f), new Vector3(172.158f, 0.000f, -16.160f), new Vector3(173.729f, 0.000f, -16.630f), new Vector3(175.203f, 0.000f, -17.345f), new Vector3(176.481f, 0.000f, -18.367f), new Vector3(177.427f, 0.000f, -19.701f), new Vector3(178.021f, 0.000f, -21.229f), new Vector3(178.402f, 0.000f, -22.824f), new Vector3(178.663f, 0.000f, -24.444f), new Vector3(178.815f, 0.000f, -26.078f), new Vector3(179.231f, 0.000f, -30.983f), new Vector3(179.991f, 0.000f, -35.847f), new Vector3(180.293f, 0.000f, -37.460f), new Vector3(180.692f, 0.000f, -39.051f), new Vector3(181.207f, 0.000f, -40.609f), new Vector3(181.817f, 0.000f, -42.132f), new Vector3(182.508f, 0.000f, -43.621f), new Vector3(183.236f, 0.000f, -45.092f), new Vector3(183.980f, 0.000f, -46.554f), new Vector3(184.807f, 0.000f, -47.971f), new Vector3(185.804f, 0.000f, -49.273f), new Vector3(186.969f, 0.000f, -50.428f), new Vector3(188.257f, 0.000f, -51.443f), new Vector3(189.630f, 0.000f, -52.341f), new Vector3(191.045f, 0.000f, -53.173f), new Vector3(192.460f, 0.000f, -54.004f), new Vector3(193.870f, 0.000f, -54.843f), new Vector3(195.322f, 0.000f, -55.607f), new Vector3(196.858f, 0.000f, -56.180f), new Vector3(198.463f, 0.000f, -56.518f), new Vector3(200.091f, 0.000f, -56.727f), new Vector3(201.725f, 0.000f, -56.882f), new Vector3(203.363f, 0.000f, -56.973f), new Vector3(208.278f, 0.000f, -56.760f), new Vector3(213.197f, 0.000f, -56.599f), new Vector3(218.121f, 0.000f, -56.597f), new Vector3(222.223f, 0.000f, -56.534f), new Vector3(223.864f, 0.000f, -56.548f), new Vector3(225.502f, 0.000f, -56.646f), new Vector3(227.126f, 0.000f, -56.881f), new Vector3(227.924f, 0.000f, -57.071f), new Vector3(229.470f, 0.000f, -57.617f), new Vector3(230.933f, 0.000f, -58.359f), new Vector3(232.318f, 0.000f, -59.238f), new Vector3(236.460f, 0.000f, -61.895f), new Vector3(237.889f, 0.000f, -62.700f), new Vector3(239.245f, 0.000f, -63.623f), new Vector3(240.470f, 0.000f, -64.713f), new Vector3(243.874f, 0.000f, -68.269f), new Vector3(247.563f, 0.000f, -71.529f), new Vector3(251.475f, 0.000f, -74.512f), new Vector3(255.718f, 0.000f, -77.008f), new Vector3(259.863f, 0.000f, -79.663f), new Vector3(263.965f, 0.000f, -82.386f), new Vector3(267.845f, 0.000f, -85.414f), new Vector3(271.863f, 0.000f, -88.256f), new Vector3(273.779f, 0.000f, -89.800f), new Vector3(277.184f, 0.000f, -93.352f), new Vector3(280.617f, 0.000f, -96.879f), new Vector3(284.224f, 0.000f, -100.230f), new Vector3(286.082f, 0.000f, -101.844f), new Vector3(287.377f, 0.000f, -102.852f), new Vector3(288.732f, 0.000f, -103.776f), new Vector3(293.073f, 0.000f, -106.096f), new Vector3(297.434f, 0.000f, -108.381f), new Vector3(298.829f, 0.000f, -109.244f), new Vector3(300.161f, 0.000f, -110.202f), new Vector3(301.424f, 0.000f, -111.249f), new Vector3(302.629f, 0.000f, -112.364f), new Vector3(303.784f, 0.000f, -113.529f), new Vector3(304.339f, 0.000f, -114.134f), new Vector3(305.373f, 0.000f, -115.407f), new Vector3(306.248f, 0.000f, -116.794f), new Vector3(306.947f, 0.000f, -118.278f), new Vector3(308.878f, 0.000f, -122.807f), new Vector3(310.977f, 0.000f, -127.260f), new Vector3(311.593f, 0.000f, -128.781f), new Vector3(312.074f, 0.000f, -130.349f), new Vector3(312.412f, 0.000f, -131.955f), new Vector3(312.631f, 0.000f, -133.581f), new Vector3(312.725f, 0.000f, -135.219f), new Vector3(312.622f, 0.000f, -136.855f), new Vector3(312.329f, 0.000f, -138.470f), new Vector3(311.947f, 0.000f, -140.065f), new Vector3(311.502f, 0.000f, -141.645f), new Vector3(310.937f, 0.000f, -143.185f), new Vector3(310.202f, 0.000f, -144.651f), new Vector3(309.284f, 0.000f, -146.009f), new Vector3(308.750f, 0.000f, -146.632f), new Vector3(307.557f, 0.000f, -147.757f), new Vector3(306.234f, 0.000f, -148.727f), new Vector3(304.820f, 0.000f, -149.558f), new Vector3(303.325f, 0.000f, -150.234f), new Vector3(301.776f, 0.000f, -150.773f), new Vector3(300.191f, 0.000f, -151.198f), new Vector3(298.579f, 0.000f, -151.505f), new Vector3(293.667f, 0.000f, -151.772f), new Vector3(288.812f, 0.000f, -152.499f), new Vector3(283.985f, 0.000f, -153.433f), new Vector3(279.076f, 0.000f, -153.788f), new Vector3(274.152f, 0.000f, -153.803f), new Vector3(269.229f, 0.000f, -153.803f), new Vector3(264.305f, 0.000f, -153.803f), new Vector3(259.382f, 0.000f, -153.801f), new Vector3(254.466f, 0.000f, -153.561f), new Vector3(249.556f, 0.000f, -153.205f), new Vector3(244.674f, 0.000f, -152.569f), new Vector3(239.835f, 0.000f, -151.671f), new Vector3(235.030f, 0.000f, -150.597f), new Vector3(230.257f, 0.000f, -149.391f), new Vector3(228.686f, 0.000f, -148.917f), new Vector3(227.129f, 0.000f, -148.398f), new Vector3(225.605f, 0.000f, -147.790f), new Vector3(224.154f, 0.000f, -147.026f), new Vector3(222.760f, 0.000f, -146.160f), new Vector3(221.395f, 0.000f, -145.249f), new Vector3(220.099f, 0.000f, -144.243f), new Vector3(218.963f, 0.000f, -143.062f), new Vector3(218.072f, 0.000f, -141.687f), new Vector3(217.465f, 0.000f, -140.166f), new Vector3(217.137f, 0.000f, -138.560f), new Vector3(217.077f, 0.000f, -136.921f), new Vector3(217.248f, 0.000f, -135.290f), new Vector3(217.617f, 0.000f, -133.692f), new Vector3(218.185f, 0.000f, -132.153f), new Vector3(218.940f, 0.000f, -130.698f), new Vector3(219.837f, 0.000f, -129.324f), new Vector3(220.829f, 0.000f, -128.017f), new Vector3(221.939f, 0.000f, -126.810f), new Vector3(223.214f, 0.000f, -125.780f), new Vector3(224.667f, 0.000f, -125.021f), new Vector3(226.224f, 0.000f, -124.507f), new Vector3(227.820f, 0.000f, -124.126f), new Vector3(232.628f, 0.000f, -123.069f), new Vector3(234.225f, 0.000f, -122.690f), new Vector3(235.783f, 0.000f, -122.175f), new Vector3(237.291f, 0.000f, -121.529f), new Vector3(238.774f, 0.000f, -120.825f), new Vector3(240.246f, 0.000f, -120.101f), new Vector3(241.690f, 0.000f, -119.322f), new Vector3(243.054f, 0.000f, -118.410f), new Vector3(244.239f, 0.000f, -117.281f), new Vector3(245.108f, 0.000f, -115.895f), new Vector3(245.590f, 0.000f, -114.330f), new Vector3(245.794f, 0.000f, -112.703f), new Vector3(245.797f, 0.000f, -111.063f), new Vector3(245.600f, 0.000f, -109.435f), new Vector3(245.185f, 0.000f, -107.849f), new Vector3(244.446f, 0.000f, -106.391f), new Vector3(243.281f, 0.000f, -105.247f), new Vector3(241.822f, 0.000f, -104.504f), new Vector3(240.252f, 0.000f, -104.033f), new Vector3(238.644f, 0.000f, -103.702f), new Vector3(237.024f, 0.000f, -103.442f), new Vector3(232.168f, 0.000f, -102.631f), new Vector3(227.316f, 0.000f, -101.799f), new Vector3(222.507f, 0.000f, -100.745f), new Vector3(217.716f, 0.000f, -99.613f), new Vector3(212.841f, 0.000f, -98.927f), new Vector3(207.995f, 0.000f, -98.064f), new Vector3(205.596f, 0.000f, -97.511f), new Vector3(204.018f, 0.000f, -97.063f), new Vector3(202.471f, 0.000f, -96.516f), new Vector3(200.960f, 0.000f, -95.875f), new Vector3(199.471f, 0.000f, -95.186f), new Vector3(197.987f, 0.000f, -94.483f), new Vector3(196.533f, 0.000f, -93.723f), new Vector3(195.151f, 0.000f, -92.840f), new Vector3(193.875f, 0.000f, -91.809f), new Vector3(192.705f, 0.000f, -90.660f), new Vector3(191.618f, 0.000f, -89.430f), new Vector3(190.582f, 0.000f, -88.157f), new Vector3(189.593f, 0.000f, -86.848f), new Vector3(187.080f, 0.000f, -82.621f), new Vector3(184.600f, 0.000f, -78.370f), new Vector3(183.726f, 0.000f, -76.981f), new Vector3(182.844f, 0.000f, -75.597f), new Vector3(181.884f, 0.000f, -74.266f), new Vector3(180.757f, 0.000f, -73.077f), new Vector3(180.127f, 0.000f, -72.551f), new Vector3(178.778f, 0.000f, -71.618f), new Vector3(177.367f, 0.000f, -70.780f), new Vector3(175.919f, 0.000f, -70.008f), new Vector3(174.426f, 0.000f, -69.328f), new Vector3(172.892f, 0.000f, -68.744f), new Vector3(169.803f, 0.000f, -67.634f), new Vector3(168.241f, 0.000f, -67.131f), new Vector3(166.652f, 0.000f, -66.721f), new Vector3(165.047f, 0.000f, -66.380f), new Vector3(163.431f, 0.000f, -66.096f), new Vector3(161.797f, 0.000f, -65.948f), new Vector3(160.158f, 0.000f, -65.995f), new Vector3(158.526f, 0.000f, -66.168f), new Vector3(153.634f, 0.000f, -66.722f), new Vector3(151.210f, 0.000f, -67.148f), new Vector3(149.604f, 0.000f, -67.489f), new Vector3(148.018f, 0.000f, -67.908f), new Vector3(146.460f, 0.000f, -68.421f), new Vector3(144.947f, 0.000f, -69.057f), new Vector3(143.505f, 0.000f, -69.839f), new Vector3(142.134f, 0.000f, -70.741f), new Vector3(138.131f, 0.000f, -73.607f), new Vector3(136.146f, 0.000f, -75.063f), new Vector3(134.854f, 0.000f, -76.074f), new Vector3(133.628f, 0.000f, -77.165f), new Vector3(132.497f, 0.000f, -78.353f), new Vector3(131.475f, 0.000f, -79.637f), new Vector3(130.572f, 0.000f, -81.006f), new Vector3(129.804f, 0.000f, -82.455f), new Vector3(129.186f, 0.000f, -83.975f), new Vector3(128.728f, 0.000f, -85.550f), new Vector3(128.425f, 0.000f, -87.163f), new Vector3(128.220f, 0.000f, -88.791f), new Vector3(128.072f, 0.000f, -90.425f), new Vector3(127.990f, 0.000f, -92.064f), new Vector3(127.965f, 0.000f, -93.705f), new Vector3(127.972f, 0.000f, -95.346f), new Vector3(128.036f, 0.000f, -96.986f), new Vector3(128.240f, 0.000f, -98.613f), new Vector3(128.679f, 0.000f, -100.192f), new Vector3(129.430f, 0.000f, -101.647f), new Vector3(130.471f, 0.000f, -102.913f), new Vector3(131.692f, 0.000f, -104.008f), new Vector3(133.006f, 0.000f, -104.991f), new Vector3(134.383f, 0.000f, -105.883f), new Vector3(135.840f, 0.000f, -106.635f), new Vector3(137.385f, 0.000f, -107.187f), new Vector3(138.977f, 0.000f, -107.585f), new Vector3(140.581f, 0.000f, -107.932f), new Vector3(145.424f, 0.000f, -108.811f), new Vector3(150.254f, 0.000f, -109.766f), new Vector3(154.920f, 0.000f, -111.317f), new Vector3(159.525f, 0.000f, -113.060f), new Vector3(164.269f, 0.000f, -114.351f), new Vector3(168.841f, 0.000f, -116.143f), new Vector3(173.390f, 0.000f, -118.019f), new Vector3(176.394f, 0.000f, -119.337f), new Vector3(177.844f, 0.000f, -120.107f), new Vector3(179.276f, 0.000f, -120.908f), new Vector3(180.676f, 0.000f, -121.764f), new Vector3(181.993f, 0.000f, -122.740f), new Vector3(183.130f, 0.000f, -123.920f), new Vector3(183.970f, 0.000f, -125.325f), new Vector3(184.261f, 0.000f, -126.091f), new Vector3(184.643f, 0.000f, -127.686f), new Vector3(184.833f, 0.000f, -129.315f), new Vector3(184.827f, 0.000f, -130.955f), new Vector3(184.569f, 0.000f, -132.574f), new Vector3(184.048f, 0.000f, -134.128f), new Vector3(183.276f, 0.000f, -135.574f), new Vector3(182.293f, 0.000f, -136.886f), new Vector3(181.160f, 0.000f, -138.072f), new Vector3(179.900f, 0.000f, -139.122f), new Vector3(178.499f, 0.000f, -139.973f), new Vector3(176.967f, 0.000f, -140.554f), new Vector3(175.359f, 0.000f, -140.876f), new Vector3(173.727f, 0.000f, -141.043f), new Vector3(172.090f, 0.000f, -141.157f), new Vector3(167.178f, 0.000f, -141.482f), new Vector3(162.255f, 0.000f, -141.498f), new Vector3(157.331f, 0.000f, -141.498f), new Vector3(152.410f, 0.000f, -141.394f), new Vector3(147.505f, 0.000f, -140.970f), new Vector3(142.652f, 0.000f, -140.147f), new Vector3(137.801f, 0.000f, -139.309f), new Vector3(136.169f, 0.000f, -139.136f), new Vector3(134.530f, 0.000f, -139.057f), new Vector3(132.889f, 0.000f, -139.044f), new Vector3(127.998f, 0.000f, -139.544f), new Vector3(123.112f, 0.000f, -140.138f), new Vector3(118.225f, 0.000f, -140.740f), new Vector3(113.327f, 0.000f, -141.232f), new Vector3(108.407f, 0.000f, -141.403f), new Vector3(104.321f, 0.000f, -141.774f), new Vector3(102.683f, 0.000f, -141.862f), new Vector3(101.042f, 0.000f, -141.828f), new Vector3(99.414f, 0.000f, -141.630f), new Vector3(97.816f, 0.000f, -141.261f), new Vector3(97.033f, 0.000f, -141.016f), new Vector3(95.511f, 0.000f, -140.405f), new Vector3(94.082f, 0.000f, -139.601f), new Vector3(92.786f, 0.000f, -138.596f), new Vector3(91.587f, 0.000f, -137.476f)};
+
+        private static readonly bool[] Circuit2IsArcEdge = {false, false, true, true, true, true, true, true, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true};
+
+        private static readonly float[] Circuit2Widths = {8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.500f, 8.460f, 8.340f, 8.210f, 8.090f, 7.970f, 7.840f, 7.720f, 7.600f, 7.480f, 7.110f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 6.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f, 7.000f};
+
+        private static readonly Vector3[] Circuit2OuterBarrier = {new Vector3(84.188f, 0.000f, -138.384f), new Vector3(80.536f, 0.000f, -135.329f), new Vector3(76.695f, 0.000f, -132.079f), new Vector3(73.709f, 0.000f, -129.358f), new Vector3(72.824f, 0.000f, -128.729f), new Vector3(71.656f, 0.000f, -127.946f), new Vector3(70.517f, 0.000f, -127.244f), new Vector3(69.574f, 0.000f, -126.736f), new Vector3(65.199f, 0.000f, -124.905f), new Vector3(60.808f, 0.000f, -123.156f), new Vector3(56.581f, 0.000f, -121.711f), new Vector3(52.288f, 0.000f, -120.755f), new Vector3(47.634f, 0.000f, -120.074f), new Vector3(43.488f, 0.000f, -119.468f), new Vector3(41.567f, 0.000f, -119.081f), new Vector3(39.702f, 0.000f, -118.638f), new Vector3(37.685f, 0.000f, -118.017f), new Vector3(35.561f, 0.000f, -117.124f), new Vector3(33.439f, 0.000f, -115.882f), new Vector3(31.472f, 0.000f, -114.289f), new Vector3(29.844f, 0.000f, -112.490f), new Vector3(28.594f, 0.000f, -110.738f), new Vector3(27.598f, 0.000f, -109.134f), new Vector3(25.058f, 0.000f, -104.882f), new Vector3(24.207f, 0.000f, -103.402f), new Vector3(23.376f, 0.000f, -101.819f), new Vector3(22.520f, 0.000f, -100.043f), new Vector3(21.682f, 0.000f, -97.873f), new Vector3(21.105f, 0.000f, -95.043f), new Vector3(21.331f, 0.000f, -91.884f), new Vector3(22.186f, 0.000f, -89.417f), new Vector3(22.982f, 0.000f, -87.751f), new Vector3(23.690f, 0.000f, -86.250f), new Vector3(25.898f, 0.000f, -81.709f), new Vector3(26.929f, 0.000f, -79.921f), new Vector3(27.857f, 0.000f, -78.373f), new Vector3(28.834f, 0.000f, -76.843f), new Vector3(29.961f, 0.000f, -75.235f), new Vector3(31.320f, 0.000f, -73.614f), new Vector3(32.805f, 0.000f, -72.166f), new Vector3(34.249f, 0.000f, -70.946f), new Vector3(38.130f, 0.000f, -67.802f), new Vector3(41.837f, 0.000f, -64.920f), new Vector3(45.021f, 0.000f, -61.815f), new Vector3(48.157f, 0.000f, -58.237f), new Vector3(49.413f, 0.000f, -56.872f), new Vector3(50.792f, 0.000f, -55.521f), new Vector3(52.269f, 0.000f, -54.247f), new Vector3(53.815f, 0.000f, -53.067f), new Vector3(55.471f, 0.000f, -51.960f), new Vector3(57.309f, 0.000f, -50.933f), new Vector3(59.294f, 0.000f, -50.083f), new Vector3(61.285f, 0.000f, -49.456f), new Vector3(63.224f, 0.000f, -49.011f), new Vector3(65.119f, 0.000f, -48.695f), new Vector3(67.001f, 0.000f, -48.482f), new Vector3(68.887f, 0.000f, -48.363f), new Vector3(70.956f, 0.000f, -48.343f), new Vector3(76.007f, 0.000f, -48.684f), new Vector3(80.874f, 0.000f, -49.091f), new Vector3(84.852f, 0.000f, -49.286f), new Vector3(86.222f, 0.000f, -49.331f), new Vector3(87.431f, 0.000f, -49.270f), new Vector3(88.634f, 0.000f, -49.097f), new Vector3(89.853f, 0.000f, -48.823f), new Vector3(91.075f, 0.000f, -48.446f), new Vector3(92.312f, 0.000f, -47.971f), new Vector3(93.109f, 0.000f, -47.653f), new Vector3(96.972f, 0.000f, -45.033f), new Vector3(98.600f, 0.000f, -43.895f), new Vector3(100.680f, 0.000f, -42.890f), new Vector3(102.273f, 0.000f, -42.384f), new Vector3(104.320f, 0.000f, -41.996f), new Vector3(106.358f, 0.000f, -41.813f), new Vector3(108.241f, 0.000f, -41.762f), new Vector3(113.164f, 0.000f, -41.750f), new Vector3(114.563f, 0.000f, -41.714f), new Vector3(115.828f, 0.000f, -41.607f), new Vector3(116.976f, 0.000f, -41.405f), new Vector3(118.095f, 0.000f, -41.086f), new Vector3(119.318f, 0.000f, -40.613f), new Vector3(120.737f, 0.000f, -39.997f), new Vector3(122.286f, 0.000f, -39.335f), new Vector3(123.730f, 0.000f, -38.741f), new Vector3(124.881f, 0.000f, -38.211f), new Vector3(125.587f, 0.000f, -37.817f), new Vector3(129.338f, 0.000f, -34.701f), new Vector3(133.513f, 0.000f, -31.626f), new Vector3(137.539f, 0.000f, -28.951f), new Vector3(141.204f, 0.000f, -26.038f), new Vector3(144.981f, 0.000f, -22.966f), new Vector3(148.611f, 0.000f, -19.962f), new Vector3(152.078f, 0.000f, -16.625f), new Vector3(153.553f, 0.000f, -15.359f), new Vector3(155.045f, 0.000f, -14.170f), new Vector3(156.859f, 0.000f, -12.941f), new Vector3(159.009f, 0.000f, -11.895f), new Vector3(161.160f, 0.000f, -11.221f), new Vector3(163.184f, 0.000f, -10.793f), new Vector3(165.290f, 0.000f, -10.526f), new Vector3(167.451f, 0.000f, -10.491f), new Vector3(169.464f, 0.000f, -10.651f), new Vector3(171.369f, 0.000f, -10.912f), new Vector3(173.237f, 0.000f, -11.791f), new Vector3(175.360f, 0.000f, -12.436f), new Vector3(177.605f, 0.000f, -13.539f), new Vector3(179.754f, 0.000f, -15.278f), new Vector3(181.390f, 0.000f, -17.569f), new Vector3(182.316f, 0.000f, -19.888f), new Vector3(182.815f, 0.000f, -21.943f), new Vector3(183.623f, 0.000f, -23.814f), new Vector3(183.796f, 0.000f, -25.645f), new Vector3(184.195f, 0.000f, -30.386f), new Vector3(184.926f, 0.000f, -35.037f), new Vector3(185.178f, 0.000f, -36.393f), new Vector3(185.493f, 0.000f, -37.657f), new Vector3(185.904f, 0.000f, -38.893f), new Vector3(186.408f, 0.000f, -40.150f), new Vector3(187.017f, 0.000f, -41.460f), new Vector3(187.705f, 0.000f, -42.849f), new Vector3(188.369f, 0.000f, -44.159f), new Vector3(188.960f, 0.000f, -45.186f), new Vector3(189.558f, 0.000f, -45.970f), new Vector3(190.281f, 0.000f, -46.683f), new Vector3(191.176f, 0.000f, -47.383f), new Vector3(192.266f, 0.000f, -48.093f), new Vector3(193.579f, 0.000f, -48.862f), new Vector3(195.005f, 0.000f, -49.701f), new Vector3(196.314f, 0.000f, -50.481f), new Vector3(197.364f, 0.000f, -51.043f), new Vector3(198.251f, 0.000f, -51.378f), new Vector3(199.297f, 0.000f, -51.588f), new Vector3(200.644f, 0.000f, -51.758f), new Vector3(202.100f, 0.000f, -51.896f), new Vector3(203.270f, 0.000f, -51.974f), new Vector3(208.088f, 0.000f, -51.763f), new Vector3(213.115f, 0.000f, -51.600f), new Vector3(218.085f, 0.000f, -51.598f), new Vector3(222.180f, 0.000f, -51.535f), new Vector3(224.035f, 0.000f, -51.550f), new Vector3(226.011f, 0.000f, -51.672f), new Vector3(227.990f, 0.000f, -51.956f), new Vector3(229.422f, 0.000f, -52.301f), new Vector3(231.436f, 0.000f, -53.020f), new Vector3(233.405f, 0.000f, -54.013f), new Vector3(235.013f, 0.000f, -55.026f), new Vector3(239.099f, 0.000f, -57.648f), new Vector3(240.525f, 0.000f, -58.451f), new Vector3(242.320f, 0.000f, -59.680f), new Vector3(244.012f, 0.000f, -61.184f), new Vector3(247.339f, 0.000f, -64.663f), new Vector3(250.736f, 0.000f, -67.665f), new Vector3(254.264f, 0.000f, -70.362f), new Vector3(258.334f, 0.000f, -72.748f), new Vector3(262.594f, 0.000f, -75.475f), new Vector3(266.888f, 0.000f, -78.329f), new Vector3(270.828f, 0.000f, -81.401f), new Vector3(274.836f, 0.000f, -84.235f), new Vector3(277.237f, 0.000f, -86.189f), new Vector3(280.781f, 0.000f, -89.878f), new Vector3(284.111f, 0.000f, -93.302f), new Vector3(287.586f, 0.000f, -96.529f), new Vector3(289.280f, 0.000f, -98.000f), new Vector3(290.322f, 0.000f, -98.812f), new Vector3(291.206f, 0.000f, -99.431f), new Vector3(295.412f, 0.000f, -101.676f), new Vector3(299.833f, 0.000f, -103.994f), new Vector3(301.606f, 0.000f, -105.086f), new Vector3(303.218f, 0.000f, -106.246f), new Vector3(304.719f, 0.000f, -107.488f), new Vector3(306.103f, 0.000f, -108.768f), new Vector3(307.381f, 0.000f, -110.056f), new Vector3(308.156f, 0.000f, -110.905f), new Vector3(309.435f, 0.000f, -112.492f), new Vector3(310.632f, 0.000f, -114.390f), new Vector3(311.527f, 0.000f, -116.274f), new Vector3(313.440f, 0.000f, -120.760f), new Vector3(315.529f, 0.000f, -125.192f), new Vector3(316.305f, 0.000f, -127.107f), new Vector3(316.916f, 0.000f, -129.100f), new Vector3(317.340f, 0.000f, -131.106f), new Vector3(317.608f, 0.000f, -133.104f), new Vector3(317.725f, 0.000f, -135.233f), new Vector3(317.585f, 0.000f, -137.460f), new Vector3(317.222f, 0.000f, -139.499f), new Vector3(316.785f, 0.000f, -141.326f), new Vector3(316.259f, 0.000f, -143.185f), new Vector3(315.526f, 0.000f, -145.170f), new Vector3(314.086f, 0.000f, -146.924f), new Vector3(312.914f, 0.000f, -148.669f), new Vector3(311.952f, 0.000f, -149.795f), new Vector3(310.436f, 0.000f, -151.216f), new Vector3(308.707f, 0.000f, -152.487f), new Vector3(307.120f, 0.000f, -153.997f), new Vector3(305.180f, 0.000f, -154.878f), new Vector3(303.245f, 0.000f, -155.553f), new Vector3(301.307f, 0.000f, -156.072f), new Vector3(299.017f, 0.000f, -156.486f), new Vector3(294.173f, 0.000f, -156.746f), new Vector3(289.657f, 0.000f, -157.427f), new Vector3(284.641f, 0.000f, -158.390f), new Vector3(279.264f, 0.000f, -158.784f), new Vector3(274.160f, 0.000f, -158.803f), new Vector3(269.229f, 0.000f, -158.803f), new Vector3(264.305f, 0.000f, -158.803f), new Vector3(259.259f, 0.000f, -158.800f), new Vector3(254.163f, 0.000f, -158.552f), new Vector3(249.052f, 0.000f, -158.179f), new Vector3(243.895f, 0.000f, -157.508f), new Vector3(238.833f, 0.000f, -156.569f), new Vector3(233.873f, 0.000f, -155.461f), new Vector3(228.977f, 0.000f, -154.224f), new Vector3(227.174f, 0.000f, -153.683f), new Vector3(225.413f, 0.000f, -153.094f), new Vector3(223.511f, 0.000f, -152.331f), new Vector3(221.669f, 0.000f, -151.364f), new Vector3(220.052f, 0.000f, -150.364f), new Vector3(218.472f, 0.000f, -149.305f), new Vector3(217.090f, 0.000f, -147.590f), new Vector3(215.437f, 0.000f, -145.858f), new Vector3(214.075f, 0.000f, -143.755f), new Vector3(213.153f, 0.000f, -141.454f), new Vector3(212.669f, 0.000f, -139.093f), new Vector3(212.580f, 0.000f, -136.769f), new Vector3(212.809f, 0.000f, -134.549f), new Vector3(213.305f, 0.000f, -132.404f), new Vector3(214.069f, 0.000f, -130.334f), new Vector3(215.054f, 0.000f, -128.429f), new Vector3(216.158f, 0.000f, -126.732f), new Vector3(217.377f, 0.000f, -125.130f), new Vector3(218.861f, 0.000f, -123.527f), new Vector3(220.747f, 0.000f, -122.017f), new Vector3(222.719f, 0.000f, -120.416f), new Vector3(224.858f, 0.000f, -119.697f), new Vector3(226.724f, 0.000f, -119.248f), new Vector3(231.534f, 0.000f, -118.190f), new Vector3(232.862f, 0.000f, -117.879f), new Vector3(234.013f, 0.000f, -117.499f), new Vector3(235.234f, 0.000f, -116.972f), new Vector3(236.597f, 0.000f, -116.324f), new Vector3(237.955f, 0.000f, -115.657f), new Vector3(239.369f, 0.000f, -115.467f), new Vector3(240.241f, 0.000f, -114.898f), new Vector3(240.754f, 0.000f, -114.434f), new Vector3(241.016f, 0.000f, -114.022f), new Vector3(241.190f, 0.000f, -113.385f), new Vector3(241.303f, 0.000f, -112.418f), new Vector3(241.305f, 0.000f, -111.331f), new Vector3(241.179f, 0.000f, -110.277f), new Vector3(240.977f, 0.000f, -109.444f), new Vector3(240.814f, 0.000f, -109.048f), new Vector3(240.653f, 0.000f, -108.900f), new Vector3(240.148f, 0.000f, -108.681f), new Vector3(239.151f, 0.000f, -108.396f), new Vector3(237.744f, 0.000f, -108.620f), new Vector3(236.208f, 0.000f, -108.375f), new Vector3(231.334f, 0.000f, -107.561f), new Vector3(226.358f, 0.000f, -106.706f), new Vector3(221.397f, 0.000f, -105.620f), new Vector3(216.792f, 0.000f, -104.527f), new Vector3(212.055f, 0.000f, -103.865f), new Vector3(207.036f, 0.000f, -102.972f), new Vector3(204.376f, 0.000f, -102.360f), new Vector3(202.501f, 0.000f, -101.828f), new Vector3(200.659f, 0.000f, -101.177f), new Vector3(198.934f, 0.000f, -100.446f), new Vector3(197.351f, 0.000f, -99.715f), new Vector3(195.758f, 0.000f, -98.959f), new Vector3(194.026f, 0.000f, -98.049f), new Vector3(192.230f, 0.000f, -96.897f), new Vector3(190.549f, 0.000f, -95.542f), new Vector3(189.077f, 0.000f, -94.101f), new Vector3(187.805f, 0.000f, -92.664f), new Vector3(186.648f, 0.000f, -91.242f), new Vector3(185.368f, 0.000f, -89.521f), new Vector3(182.771f, 0.000f, -85.159f), new Vector3(180.302f, 0.000f, -80.926f), new Vector3(179.501f, 0.000f, -79.656f), new Vector3(178.706f, 0.000f, -78.404f), new Vector3(178.034f, 0.000f, -77.456f), new Vector3(177.265f, 0.000f, -76.655f), new Vector3(177.161f, 0.000f, -76.577f), new Vector3(176.077f, 0.000f, -75.826f), new Vector3(174.913f, 0.000f, -75.137f), new Vector3(173.705f, 0.000f, -74.491f), new Vector3(172.499f, 0.000f, -73.942f), new Vector3(171.172f, 0.000f, -73.439f), new Vector3(168.164f, 0.000f, -72.358f), new Vector3(166.849f, 0.000f, -71.933f), new Vector3(165.508f, 0.000f, -71.589f), new Vector3(164.094f, 0.000f, -71.288f), new Vector3(162.772f, 0.000f, -71.052f), new Vector3(161.644f, 0.000f, -70.945f), new Vector3(160.493f, 0.000f, -70.984f), new Vector3(159.080f, 0.000f, -71.137f), new Vector3(154.298f, 0.000f, -71.678f), new Vector3(152.144f, 0.000f, -72.060f), new Vector3(150.762f, 0.000f, -72.353f), new Vector3(149.440f, 0.000f, -72.701f), new Vector3(148.212f, 0.000f, -73.104f), new Vector3(147.111f, 0.000f, -73.564f), new Vector3(146.074f, 0.000f, -74.129f), new Vector3(145.004f, 0.000f, -74.835f), new Vector3(141.057f, 0.000f, -77.661f), new Vector3(139.153f, 0.000f, -79.057f), new Vector3(138.058f, 0.000f, -79.913f), new Vector3(137.104f, 0.000f, -80.759f), new Vector3(136.268f, 0.000f, -81.637f), new Vector3(135.522f, 0.000f, -82.573f), new Vector3(134.872f, 0.000f, -83.557f), new Vector3(134.334f, 0.000f, -84.571f), new Vector3(133.909f, 0.000f, -85.616f), new Vector3(133.592f, 0.000f, -86.710f), new Vector3(133.365f, 0.000f, -87.938f), new Vector3(133.191f, 0.000f, -89.329f), new Vector3(133.060f, 0.000f, -90.777f), new Vector3(132.987f, 0.000f, -92.227f), new Vector3(132.965f, 0.000f, -93.732f), new Vector3(132.971f, 0.000f, -95.238f), new Vector3(133.019f, 0.000f, -96.578f), new Vector3(132.652f, 0.000f, -97.728f), new Vector3(132.869f, 0.000f, -98.549f), new Vector3(133.188f, 0.000f, -99.172f), new Vector3(133.720f, 0.000f, -99.798f), new Vector3(134.546f, 0.000f, -100.528f), new Vector3(135.578f, 0.000f, -101.299f), new Vector3(136.892f, 0.000f, -101.557f), new Vector3(137.834f, 0.000f, -102.050f), new Vector3(138.834f, 0.000f, -102.402f), new Vector3(140.112f, 0.000f, -102.716f), new Vector3(141.515f, 0.000f, -103.020f), new Vector3(146.356f, 0.000f, -103.899f), new Vector3(151.530f, 0.000f, -104.931f), new Vector3(156.595f, 0.000f, -106.606f), new Vector3(161.068f, 0.000f, -108.304f), new Vector3(165.840f, 0.000f, -109.604f), new Vector3(170.706f, 0.000f, -111.504f), new Vector3(175.337f, 0.000f, -113.414f), new Vector3(178.516f, 0.000f, -114.810f), new Vector3(180.236f, 0.000f, -115.716f), new Vector3(181.801f, 0.000f, -116.592f), new Vector3(183.192f, 0.000f, -118.033f), new Vector3(184.964f, 0.000f, -119.361f), new Vector3(186.704f, 0.000f, -121.186f), new Vector3(187.961f, 0.000f, -123.245f), new Vector3(188.589f, 0.000f, -124.858f), new Vector3(189.074f, 0.000f, -126.900f), new Vector3(189.326f, 0.000f, -129.063f), new Vector3(189.312f, 0.000f, -131.318f), new Vector3(188.939f, 0.000f, -133.646f), new Vector3(188.181f, 0.000f, -135.909f), new Vector3(187.072f, 0.000f, -137.989f), new Vector3(185.727f, 0.000f, -139.795f), new Vector3(184.232f, 0.000f, -141.360f), new Vector3(182.517f, 0.000f, -142.783f), new Vector3(180.473f, 0.000f, -144.017f), new Vector3(178.210f, 0.000f, -144.879f), new Vector3(176.105f, 0.000f, -145.820f), new Vector3(174.156f, 0.000f, -146.024f), new Vector3(172.425f, 0.000f, -146.146f), new Vector3(167.351f, 0.000f, -146.479f), new Vector3(162.263f, 0.000f, -146.498f), new Vector3(157.278f, 0.000f, -146.498f), new Vector3(152.142f, 0.000f, -146.387f), new Vector3(146.871f, 0.000f, -145.930f), new Vector3(141.808f, 0.000f, -145.075f), new Vector3(137.031f, 0.000f, -144.249f), new Vector3(135.787f, 0.000f, -144.122f), new Vector3(134.390f, 0.000f, -144.055f), new Vector3(133.261f, 0.000f, -144.030f), new Vector3(128.554f, 0.000f, -144.513f), new Vector3(123.719f, 0.000f, -145.100f), new Vector3(118.781f, 0.000f, -145.709f), new Vector3(113.664f, 0.000f, -146.221f), new Vector3(108.707f, 0.000f, -146.394f), new Vector3(104.720f, 0.000f, -146.758f), new Vector3(102.765f, 0.000f, -146.861f), new Vector3(100.688f, 0.000f, -146.815f), new Vector3(98.549f, 0.000f, -146.554f), new Vector3(96.568f, 0.000f, -146.103f), new Vector3(95.293f, 0.000f, -145.704f), new Vector3(93.349f, 0.000f, -144.914f), new Vector3(91.315f, 0.000f, -143.766f), new Vector3(89.543f, 0.000f, -142.402f), new Vector3(88.155f, 0.000f, -141.112f)};
+
+        private static readonly Vector3[] Circuit2InnerBarrier = {new Vector3(91.837f, 0.000f, -129.797f), new Vector3(87.941f, 0.000f, -126.531f), new Vector3(84.267f, 0.000f, -123.424f), new Vector3(81.189f, 0.000f, -120.623f), new Vector3(79.427f, 0.000f, -119.313f), new Vector3(77.868f, 0.000f, -118.268f), new Vector3(76.210f, 0.000f, -117.253f), new Vector3(74.251f, 0.000f, -116.230f), new Vector3(69.546f, 0.000f, -114.258f), new Vector3(64.787f, 0.000f, -112.367f), new Vector3(59.694f, 0.000f, -110.640f), new Vector3(54.382f, 0.000f, -109.447f), new Vector3(49.301f, 0.000f, -108.695f), new Vector3(45.331f, 0.000f, -108.117f), new Vector3(44.036f, 0.000f, -107.849f), new Vector3(42.707f, 0.000f, -107.538f), new Vector3(41.587f, 0.000f, -107.199f), new Vector3(40.683f, 0.000f, -106.828f), new Vector3(39.972f, 0.000f, -106.418f), new Vector3(39.390f, 0.000f, -105.949f), new Vector3(38.826f, 0.000f, -105.308f), new Vector3(38.179f, 0.000f, -104.384f), new Vector3(37.447f, 0.000f, -103.197f), new Vector3(34.937f, 0.000f, -98.996f), new Vector3(34.118f, 0.000f, -97.650f), new Vector3(33.323f, 0.000f, -96.382f), new Vector3(32.657f, 0.000f, -95.251f), new Vector3(32.214f, 0.000f, -94.400f), new Vector3(32.026f, 0.000f, -94.047f), new Vector3(31.978f, 0.000f, -93.944f), new Vector3(32.177f, 0.000f, -93.307f), new Vector3(32.705f, 0.000f, -91.970f), new Vector3(33.286f, 0.000f, -90.452f), new Vector3(35.054f, 0.000f, -85.989f), new Vector3(35.601f, 0.000f, -84.900f), new Vector3(36.362f, 0.000f, -83.633f), new Vector3(37.150f, 0.000f, -82.396f), new Vector3(37.902f, 0.000f, -81.313f), new Vector3(38.649f, 0.000f, -80.418f), new Vector3(39.516f, 0.000f, -79.580f), new Vector3(40.582f, 0.000f, -78.685f), new Vector3(44.352f, 0.000f, -75.630f), new Vector3(48.410f, 0.000f, -72.457f), new Vector3(52.272f, 0.000f, -68.701f), new Vector3(55.633f, 0.000f, -64.879f), new Vector3(56.598f, 0.000f, -63.828f), new Vector3(57.562f, 0.000f, -62.881f), new Vector3(58.570f, 0.000f, -62.012f), new Vector3(59.633f, 0.000f, -61.201f), new Vector3(60.704f, 0.000f, -60.482f), new Vector3(61.728f, 0.000f, -59.903f), new Vector3(62.759f, 0.000f, -59.464f), new Vector3(63.899f, 0.000f, -59.109f), new Vector3(65.159f, 0.000f, -58.822f), new Vector3(66.501f, 0.000f, -58.600f), new Vector3(67.880f, 0.000f, -58.444f), new Vector3(69.270f, 0.000f, -58.355f), new Vector3(70.482f, 0.000f, -58.332f), new Vector3(75.253f, 0.000f, -58.656f), new Vector3(80.198f, 0.000f, -59.068f), new Vector3(84.416f, 0.000f, -59.276f), new Vector3(86.326f, 0.000f, -59.330f), new Vector3(88.394f, 0.000f, -59.224f), new Vector3(90.439f, 0.000f, -58.933f), new Vector3(92.422f, 0.000f, -58.487f), new Vector3(94.336f, 0.000f, -57.899f), new Vector3(96.163f, 0.000f, -57.200f), new Vector3(98.357f, 0.000f, -56.165f), new Vector3(102.627f, 0.000f, -53.280f), new Vector3(103.670f, 0.000f, -52.515f), new Vector3(104.548f, 0.000f, -52.112f), new Vector3(104.522f, 0.000f, -52.128f), new Vector3(105.696f, 0.000f, -51.901f), new Vector3(106.927f, 0.000f, -51.797f), new Vector3(108.325f, 0.000f, -51.761f), new Vector3(113.249f, 0.000f, -51.750f), new Vector3(115.131f, 0.000f, -51.698f), new Vector3(117.135f, 0.000f, -51.521f), new Vector3(119.217f, 0.000f, -51.151f), new Vector3(121.254f, 0.000f, -50.574f), new Vector3(123.096f, 0.000f, -49.872f), new Vector3(124.689f, 0.000f, -49.183f), new Vector3(126.158f, 0.000f, -48.555f), new Vector3(127.748f, 0.000f, -47.898f), new Vector3(129.572f, 0.000f, -47.043f), new Vector3(131.678f, 0.000f, -45.748f), new Vector3(135.499f, 0.000f, -42.577f), new Vector3(139.249f, 0.000f, -39.818f), new Vector3(143.421f, 0.000f, -37.038f), new Vector3(147.466f, 0.000f, -33.835f), new Vector3(151.326f, 0.000f, -30.695f), new Vector3(155.272f, 0.000f, -27.421f), new Vector3(158.902f, 0.000f, -23.934f), new Vector3(159.923f, 0.000f, -23.068f), new Vector3(160.994f, 0.000f, -22.208f), new Vector3(161.887f, 0.000f, -21.585f), new Vector3(162.684f, 0.000f, -21.195f), new Vector3(163.668f, 0.000f, -20.902f), new Vector3(164.855f, 0.000f, -20.652f), new Vector3(166.003f, 0.000f, -20.501f), new Vector3(167.122f, 0.000f, -20.486f), new Vector3(168.380f, 0.000f, -20.592f), new Vector3(169.727f, 0.000f, -20.776f), new Vector3(171.079f, 0.000f, -20.529f), new Vector3(172.098f, 0.000f, -20.824f), new Vector3(172.802f, 0.000f, -21.150f), new Vector3(173.209f, 0.000f, -21.456f), new Vector3(173.465f, 0.000f, -21.833f), new Vector3(173.725f, 0.000f, -22.569f), new Vector3(173.989f, 0.000f, -23.705f), new Vector3(173.702f, 0.000f, -25.074f), new Vector3(173.834f, 0.000f, -26.511f), new Vector3(174.267f, 0.000f, -31.581f), new Vector3(175.057f, 0.000f, -36.656f), new Vector3(175.408f, 0.000f, -38.527f), new Vector3(175.890f, 0.000f, -40.446f), new Vector3(176.511f, 0.000f, -42.325f), new Vector3(177.227f, 0.000f, -44.115f), new Vector3(177.999f, 0.000f, -45.782f), new Vector3(178.767f, 0.000f, -47.334f), new Vector3(179.592f, 0.000f, -48.950f), new Vector3(180.655f, 0.000f, -50.756f), new Vector3(182.050f, 0.000f, -52.575f), new Vector3(183.656f, 0.000f, -54.173f), new Vector3(185.338f, 0.000f, -55.502f), new Vector3(186.994f, 0.000f, -56.590f), new Vector3(188.512f, 0.000f, -57.483f), new Vector3(189.915f, 0.000f, -58.308f), new Vector3(191.427f, 0.000f, -59.206f), new Vector3(193.280f, 0.000f, -60.171f), new Vector3(195.466f, 0.000f, -60.982f), new Vector3(197.629f, 0.000f, -61.448f), new Vector3(199.537f, 0.000f, -61.696f), new Vector3(201.349f, 0.000f, -61.867f), new Vector3(203.456f, 0.000f, -61.973f), new Vector3(208.468f, 0.000f, -61.756f), new Vector3(213.280f, 0.000f, -61.599f), new Vector3(218.157f, 0.000f, -61.597f), new Vector3(222.267f, 0.000f, -61.534f), new Vector3(223.694f, 0.000f, -61.545f), new Vector3(224.994f, 0.000f, -61.620f), new Vector3(226.261f, 0.000f, -61.806f), new Vector3(226.425f, 0.000f, -61.842f), new Vector3(227.503f, 0.000f, -62.214f), new Vector3(228.460f, 0.000f, -62.705f), new Vector3(229.624f, 0.000f, -63.449f), new Vector3(233.820f, 0.000f, -66.141f), new Vector3(235.253f, 0.000f, -66.949f), new Vector3(236.170f, 0.000f, -67.565f), new Vector3(236.928f, 0.000f, -68.242f), new Vector3(240.410f, 0.000f, -71.874f), new Vector3(244.389f, 0.000f, -75.392f), new Vector3(248.687f, 0.000f, -78.662f), new Vector3(253.102f, 0.000f, -81.269f), new Vector3(257.132f, 0.000f, -83.851f), new Vector3(261.042f, 0.000f, -86.443f), new Vector3(264.863f, 0.000f, -89.427f), new Vector3(268.891f, 0.000f, -92.277f), new Vector3(270.320f, 0.000f, -93.411f), new Vector3(273.588f, 0.000f, -96.826f), new Vector3(277.122f, 0.000f, -100.455f), new Vector3(280.862f, 0.000f, -103.930f), new Vector3(282.884f, 0.000f, -105.688f), new Vector3(284.431f, 0.000f, -106.892f), new Vector3(286.258f, 0.000f, -108.122f), new Vector3(290.735f, 0.000f, -110.515f), new Vector3(295.034f, 0.000f, -112.768f), new Vector3(296.052f, 0.000f, -113.402f), new Vector3(297.104f, 0.000f, -114.159f), new Vector3(298.130f, 0.000f, -115.011f), new Vector3(299.154f, 0.000f, -115.959f), new Vector3(300.187f, 0.000f, -117.003f), new Vector3(300.521f, 0.000f, -117.363f), new Vector3(301.310f, 0.000f, -118.323f), new Vector3(301.864f, 0.000f, -119.198f), new Vector3(302.366f, 0.000f, -120.282f), new Vector3(304.317f, 0.000f, -124.854f), new Vector3(306.425f, 0.000f, -129.329f), new Vector3(306.882f, 0.000f, -130.454f), new Vector3(307.232f, 0.000f, -131.598f), new Vector3(307.485f, 0.000f, -132.804f), new Vector3(307.654f, 0.000f, -134.058f), new Vector3(307.725f, 0.000f, -135.205f), new Vector3(307.658f, 0.000f, -136.251f), new Vector3(307.436f, 0.000f, -137.440f), new Vector3(307.108f, 0.000f, -138.805f), new Vector3(306.745f, 0.000f, -140.105f), new Vector3(306.348f, 0.000f, -141.200f), new Vector3(306.318f, 0.000f, -142.378f), new Vector3(305.654f, 0.000f, -143.350f), new Vector3(305.549f, 0.000f, -143.470f), new Vector3(304.678f, 0.000f, -144.299f), new Vector3(303.761f, 0.000f, -144.968f), new Vector3(302.519f, 0.000f, -145.118f), new Vector3(301.471f, 0.000f, -145.591f), new Vector3(300.307f, 0.000f, -145.994f), new Vector3(299.075f, 0.000f, -146.324f), new Vector3(298.141f, 0.000f, -146.525f), new Vector3(293.161f, 0.000f, -146.798f), new Vector3(287.966f, 0.000f, -147.571f), new Vector3(283.329f, 0.000f, -148.476f), new Vector3(278.888f, 0.000f, -148.791f), new Vector3(274.145f, 0.000f, -148.803f), new Vector3(269.229f, 0.000f, -148.803f), new Vector3(264.306f, 0.000f, -148.803f), new Vector3(259.505f, 0.000f, -148.803f), new Vector3(254.769f, 0.000f, -148.571f), new Vector3(250.060f, 0.000f, -148.230f), new Vector3(245.454f, 0.000f, -147.630f), new Vector3(240.837f, 0.000f, -146.772f), new Vector3(236.188f, 0.000f, -145.732f), new Vector3(231.537f, 0.000f, -144.557f), new Vector3(230.198f, 0.000f, -144.151f), new Vector3(228.846f, 0.000f, -143.702f), new Vector3(227.700f, 0.000f, -143.250f), new Vector3(226.639f, 0.000f, -142.687f), new Vector3(225.467f, 0.000f, -141.957f), new Vector3(224.318f, 0.000f, -141.192f), new Vector3(223.108f, 0.000f, -140.897f), new Vector3(222.489f, 0.000f, -140.266f), new Vector3(222.069f, 0.000f, -139.619f), new Vector3(221.776f, 0.000f, -138.877f), new Vector3(221.605f, 0.000f, -138.026f), new Vector3(221.575f, 0.000f, -137.073f), new Vector3(221.686f, 0.000f, -136.032f), new Vector3(221.929f, 0.000f, -134.979f), new Vector3(222.300f, 0.000f, -133.973f), new Vector3(222.826f, 0.000f, -132.967f), new Vector3(223.515f, 0.000f, -131.916f), new Vector3(224.281f, 0.000f, -130.904f), new Vector3(225.017f, 0.000f, -130.092f), new Vector3(225.681f, 0.000f, -129.543f), new Vector3(226.614f, 0.000f, -129.627f), new Vector3(227.589f, 0.000f, -129.317f), new Vector3(228.916f, 0.000f, -129.005f), new Vector3(233.723f, 0.000f, -127.948f), new Vector3(235.588f, 0.000f, -127.501f), new Vector3(237.553f, 0.000f, -126.852f), new Vector3(239.348f, 0.000f, -126.087f), new Vector3(240.950f, 0.000f, -125.327f), new Vector3(242.537f, 0.000f, -124.545f), new Vector3(244.011f, 0.000f, -123.177f), new Vector3(245.867f, 0.000f, -121.923f), new Vector3(247.724f, 0.000f, -120.128f), new Vector3(249.200f, 0.000f, -117.769f), new Vector3(249.989f, 0.000f, -115.276f), new Vector3(250.285f, 0.000f, -112.989f), new Vector3(250.289f, 0.000f, -110.796f), new Vector3(250.020f, 0.000f, -108.594f), new Vector3(249.393f, 0.000f, -106.254f), new Vector3(248.077f, 0.000f, -103.733f), new Vector3(245.908f, 0.000f, -101.594f), new Vector3(243.497f, 0.000f, -100.327f), new Vector3(241.353f, 0.000f, -99.670f), new Vector3(239.545f, 0.000f, -98.784f), new Vector3(237.840f, 0.000f, -98.509f), new Vector3(233.003f, 0.000f, -97.701f), new Vector3(228.274f, 0.000f, -96.892f), new Vector3(223.617f, 0.000f, -95.870f), new Vector3(218.640f, 0.000f, -94.700f), new Vector3(213.628f, 0.000f, -93.989f), new Vector3(208.954f, 0.000f, -93.157f), new Vector3(206.817f, 0.000f, -92.662f), new Vector3(205.534f, 0.000f, -92.299f), new Vector3(204.282f, 0.000f, -91.856f), new Vector3(202.987f, 0.000f, -91.304f), new Vector3(201.590f, 0.000f, -90.658f), new Vector3(200.216f, 0.000f, -90.008f), new Vector3(199.040f, 0.000f, -89.397f), new Vector3(198.073f, 0.000f, -88.782f), new Vector3(197.202f, 0.000f, -88.077f), new Vector3(196.332f, 0.000f, -87.219f), new Vector3(195.431f, 0.000f, -86.196f), new Vector3(194.517f, 0.000f, -85.072f), new Vector3(193.819f, 0.000f, -84.174f), new Vector3(191.388f, 0.000f, -80.083f), new Vector3(188.897f, 0.000f, -75.814f), new Vector3(187.950f, 0.000f, -74.306f), new Vector3(186.982f, 0.000f, -72.790f), new Vector3(185.735f, 0.000f, -71.077f), new Vector3(184.249f, 0.000f, -69.498f), new Vector3(183.092f, 0.000f, -68.526f), new Vector3(181.478f, 0.000f, -67.410f), new Vector3(179.821f, 0.000f, -66.424f), new Vector3(178.133f, 0.000f, -65.525f), new Vector3(176.352f, 0.000f, -64.714f), new Vector3(174.612f, 0.000f, -64.049f), new Vector3(171.441f, 0.000f, -62.910f), new Vector3(169.633f, 0.000f, -62.329f), new Vector3(167.797f, 0.000f, -61.854f), new Vector3(166.000f, 0.000f, -61.471f), new Vector3(164.090f, 0.000f, -61.140f), new Vector3(161.951f, 0.000f, -60.950f), new Vector3(159.823f, 0.000f, -61.007f), new Vector3(157.972f, 0.000f, -61.198f), new Vector3(152.970f, 0.000f, -61.767f), new Vector3(150.276f, 0.000f, -62.236f), new Vector3(148.447f, 0.000f, -62.624f), new Vector3(146.596f, 0.000f, -63.114f), new Vector3(144.708f, 0.000f, -63.738f), new Vector3(142.783f, 0.000f, -64.549f), new Vector3(140.937f, 0.000f, -65.550f), new Vector3(139.264f, 0.000f, -66.647f), new Vector3(135.205f, 0.000f, -69.553f), new Vector3(133.139f, 0.000f, -71.068f), new Vector3(131.650f, 0.000f, -72.236f), new Vector3(130.152f, 0.000f, -73.571f), new Vector3(128.727f, 0.000f, -75.070f), new Vector3(127.429f, 0.000f, -76.700f), new Vector3(126.271f, 0.000f, -78.456f), new Vector3(125.273f, 0.000f, -80.340f), new Vector3(124.462f, 0.000f, -82.334f), new Vector3(123.865f, 0.000f, -84.390f), new Vector3(123.486f, 0.000f, -86.388f), new Vector3(123.249f, 0.000f, -88.253f), new Vector3(123.085f, 0.000f, -90.074f), new Vector3(122.992f, 0.000f, -91.901f), new Vector3(122.965f, 0.000f, -93.679f), new Vector3(122.973f, 0.000f, -95.454f), new Vector3(123.053f, 0.000f, -97.394f), new Vector3(123.828f, 0.000f, -99.499f), new Vector3(124.490f, 0.000f, -101.835f), new Vector3(125.672f, 0.000f, -104.123f), new Vector3(127.223f, 0.000f, -106.027f), new Vector3(128.839f, 0.000f, -107.487f), new Vector3(130.433f, 0.000f, -108.683f), new Vector3(131.875f, 0.000f, -110.208f), new Vector3(133.847f, 0.000f, -111.220f), new Vector3(135.935f, 0.000f, -111.973f), new Vector3(137.842f, 0.000f, -112.455f), new Vector3(139.647f, 0.000f, -112.844f), new Vector3(144.493f, 0.000f, -113.724f), new Vector3(148.978f, 0.000f, -114.600f), new Vector3(153.246f, 0.000f, -116.029f), new Vector3(157.982f, 0.000f, -117.816f), new Vector3(162.698f, 0.000f, -119.098f), new Vector3(166.975f, 0.000f, -120.782f), new Vector3(171.443f, 0.000f, -122.625f), new Vector3(174.272f, 0.000f, -123.865f), new Vector3(175.451f, 0.000f, -124.497f), new Vector3(176.752f, 0.000f, -125.223f), new Vector3(178.159f, 0.000f, -125.494f), new Vector3(179.022f, 0.000f, -126.120f), new Vector3(179.556f, 0.000f, -126.655f), new Vector3(179.980f, 0.000f, -127.404f), new Vector3(179.933f, 0.000f, -127.325f), new Vector3(180.213f, 0.000f, -128.472f), new Vector3(180.340f, 0.000f, -129.567f), new Vector3(180.341f, 0.000f, -130.591f), new Vector3(180.198f, 0.000f, -131.501f), new Vector3(179.916f, 0.000f, -132.347f), new Vector3(179.479f, 0.000f, -133.158f), new Vector3(178.859f, 0.000f, -133.978f), new Vector3(178.087f, 0.000f, -134.784f), new Vector3(177.283f, 0.000f, -135.461f), new Vector3(176.525f, 0.000f, -135.929f), new Vector3(175.724f, 0.000f, -136.229f), new Vector3(174.614f, 0.000f, -135.932f), new Vector3(173.298f, 0.000f, -136.061f), new Vector3(171.755f, 0.000f, -136.169f), new Vector3(167.005f, 0.000f, -136.485f), new Vector3(162.246f, 0.000f, -136.498f), new Vector3(157.384f, 0.000f, -136.499f), new Vector3(152.678f, 0.000f, -136.401f), new Vector3(148.139f, 0.000f, -136.011f), new Vector3(143.496f, 0.000f, -135.219f), new Vector3(138.571f, 0.000f, -134.368f), new Vector3(136.552f, 0.000f, -134.151f), new Vector3(134.670f, 0.000f, -134.059f), new Vector3(132.517f, 0.000f, -134.058f), new Vector3(127.443f, 0.000f, -134.575f), new Vector3(122.504f, 0.000f, -135.175f), new Vector3(117.669f, 0.000f, -135.771f), new Vector3(112.990f, 0.000f, -136.244f), new Vector3(108.107f, 0.000f, -136.412f), new Vector3(103.922f, 0.000f, -136.790f), new Vector3(102.600f, 0.000f, -136.862f), new Vector3(101.396f, 0.000f, -136.840f), new Vector3(100.280f, 0.000f, -136.705f), new Vector3(99.063f, 0.000f, -136.419f), new Vector3(98.772f, 0.000f, -136.329f), new Vector3(97.672f, 0.000f, -135.897f), new Vector3(96.848f, 0.000f, -135.436f), new Vector3(96.029f, 0.000f, -134.790f), new Vector3(95.019f, 0.000f, -133.839f)};
+
+        /// <summary>
+        /// Round-36 founder feedback ("zebra ideal ... fica bem
+        /// próxima as curvas ... não aquele bloco grande e travado"):
+        /// a continuous curb centerline hugging the INSIDE (apex) edge
+        /// of every genuinely tight corner, instead of a fixed static
+        /// square block. Computed in Python from the same 385-point
+        /// centerline as everything else above: local radius of
+        /// curvature per point (smoothed, small gaps closed so one real
+        /// corner doesn't fragment into several tiny curb patches),
+        /// corners tighter than 20m flagged as curb zone, each point
+        /// offset toward the inside of ITS OWN turn direction (left or
+        /// right, detected per point via the sign of the turn) by
+        /// (localWidth/2 - curbWidth/2) so the curb sits right at the
+        /// pavement edge. 16 separate contiguous curb runs came out of
+        /// this — one per named corner, confirming the smoothing found
+        /// the real corners and not curvature noise from the photo
+        /// extraction. Same length (385) and same per-edge indexing as
+        /// <see cref="Circuit2Centerline"/>/<see cref="Circuit2IsArcEdge"/>.
+        /// </summary>
+        private static readonly Vector3[] Circuit2CurbPoints = {
+new Vector3(85.585f, 0.13f, -136.816f), new Vector3(86.589f, 0.13f, -128.137f), new Vector3(82.884f, 0.13f, -125.004f), new Vector3(75.075f, 0.13f, -127.763f), new Vector3(74.029f, 0.13f, -127.009f), new Vector3(72.791f, 0.13f, -126.178f), new Vector3(71.557f, 0.13f, -125.420f), new Vector3(70.428f, 0.13f, -124.817f), new Vector3(65.993f, 0.13f, -122.960f), new Vector3(61.535f, 0.13f, -121.186f), new Vector3(57.149f, 0.13f, -119.689f), new Vector3(52.670f, 0.13f, -118.690f), new Vector3(47.938f, 0.13f, -117.996f), new Vector3(44.995f, 0.13f, -110.190f), new Vector3(43.585f, 0.13f, -109.900f), new Vector3(42.158f, 0.13f, -109.565f), new Vector3(40.874f, 0.13f, -109.174f), new Vector3(39.748f, 0.13f, -108.708f), new Vector3(38.779f, 0.13f, -108.146f), new Vector3(37.944f, 0.13f, -107.472f), new Vector3(37.186f, 0.13f, -106.620f), new Vector3(36.428f, 0.13f, -105.544f), new Vector3(35.649f, 0.13f, -104.281f), new Vector3(33.133f, 0.13f, -100.071f), new Vector3(32.302f, 0.13f, -98.704f), new Vector3(31.480f, 0.13f, -97.389f), new Vector3(30.758f, 0.13f, -96.148f), new Vector3(30.220f, 0.13f, -95.058f), new Vector3(29.935f, 0.13f, -94.238f), new Vector3(29.916f, 0.13f, -93.545f), new Vector3(30.220f, 0.13f, -92.545f), new Vector3(24.909f, 0.13f, -88.587f), new Vector3(31.362f, 0.13f, -89.610f), new Vector3(33.151f, 0.13f, -85.100f), new Vector3(33.780f, 0.13f, -83.854f), new Vector3(34.576f, 0.13f, -82.529f), new Vector3(35.403f, 0.13f, -81.230f), new Vector3(36.235f, 0.13f, -80.037f), new Vector3(37.110f, 0.13f, -78.989f), new Vector3(38.107f, 0.13f, -78.023f), new Vector3(39.252f, 0.13f, -77.059f), new Vector3(43.045f, 0.13f, -73.986f), new Vector3(43.218f, 0.13f, -66.503f), new Vector3(46.544f, 0.13f, -63.261f), new Vector3(54.063f, 0.13f, -63.484f), new Vector3(55.090f, 0.13f, -62.367f), new Vector3(56.140f, 0.13f, -61.335f), new Vector3(57.247f, 0.13f, -60.381f), new Vector3(58.411f, 0.13f, -59.492f), new Vector3(59.605f, 0.13f, -58.692f), new Vector3(60.800f, 0.13f, -58.019f), new Vector3(62.032f, 0.13f, -57.494f), new Vector3(63.350f, 0.13f, -57.082f), new Vector3(64.753f, 0.13f, -56.761f), new Vector3(66.211f, 0.13f, -56.520f), new Vector3(67.696f, 0.13f, -56.352f), new Vector3(69.190f, 0.13f, -56.257f), new Vector3(70.582f, 0.13f, -56.234f), new Vector3(75.411f, 0.13f, -56.562f), new Vector3(80.732f, 0.13f, -51.186f), new Vector3(84.761f, 0.13f, -51.384f), new Vector3(86.244f, 0.13f, -51.430f), new Vector3(87.633f, 0.13f, -51.360f), new Vector3(89.013f, 0.13f, -51.162f), new Vector3(90.392f, 0.13f, -50.852f), new Vector3(91.760f, 0.13f, -50.431f), new Vector3(93.121f, 0.13f, -49.909f), new Vector3(94.211f, 0.13f, -49.441f), new Vector3(98.159f, 0.13f, -46.765f), new Vector3(102.605f, 0.13f, -50.705f), new Vector3(103.736f, 0.13f, -50.175f), new Vector3(104.050f, 0.13f, -50.082f), new Vector3(105.407f, 0.13f, -49.820f), new Vector3(106.807f, 0.13f, -49.701f), new Vector3(108.307f, 0.13f, -49.661f), new Vector3(113.182f, 0.13f, -43.850f), new Vector3(114.682f, 0.13f, -43.811f), new Vector3(116.103f, 0.13f, -43.689f), new Vector3(117.447f, 0.13f, -43.452f), new Vector3(118.759f, 0.13f, -43.078f), new Vector3(120.111f, 0.13f, -42.557f), new Vector3(123.859f, 0.13f, -47.254f), new Vector3(125.345f, 0.13f, -46.619f), new Vector3(124.574f, 0.13f, -40.664f), new Vector3(125.866f, 0.13f, -40.066f), new Vector3(126.866f, 0.13f, -39.483f), new Vector3(134.205f, 0.13f, -40.923f), new Vector3(138.045f, 0.13f, -38.097f), new Vector3(138.774f, 0.13f, -30.649f), new Vector3(142.519f, 0.13f, -27.676f), new Vector3(146.313f, 0.13f, -24.589f), new Vector3(150.010f, 0.13f, -21.528f), new Vector3(157.469f, 0.13f, -22.399f), new Vector3(158.585f, 0.13f, -21.449f), new Vector3(159.745f, 0.13f, -20.520f), new Vector3(160.831f, 0.13f, -19.770f), new Vector3(161.912f, 0.13f, -19.242f), new Vector3(163.142f, 0.13f, -18.869f), new Vector3(164.504f, 0.13f, -18.582f), new Vector3(165.854f, 0.13f, -18.406f), new Vector3(167.191f, 0.13f, -18.387f), new Vector3(168.608f, 0.13f, -18.504f), new Vector3(170.072f, 0.13f, -18.705f), new Vector3(171.582f, 0.13f, -18.490f), new Vector3(172.859f, 0.13f, -18.867f), new Vector3(173.922f, 0.13f, -19.374f), new Vector3(174.736f, 0.13f, -20.014f), new Vector3(175.314f, 0.13f, -20.838f), new Vector3(175.730f, 0.13f, -21.944f), new Vector3(176.049f, 0.13f, -23.294f), new Vector3(175.786f, 0.13f, -24.809f), new Vector3(175.926f, 0.13f, -26.329f), new Vector3(182.110f, 0.13f, -30.637f), new Vector3(182.853f, 0.13f, -35.377f), new Vector3(183.126f, 0.13f, -36.841f), new Vector3(183.477f, 0.13f, -38.242f), new Vector3(183.931f, 0.13f, -39.614f), new Vector3(184.480f, 0.13f, -40.982f), new Vector3(185.123f, 0.13f, -42.367f), new Vector3(185.828f, 0.13f, -43.791f), new Vector3(186.526f, 0.13f, -45.165f), new Vector3(187.216f, 0.13f, -46.355f), new Vector3(187.982f, 0.13f, -47.357f), new Vector3(188.890f, 0.13f, -48.256f), new Vector3(189.950f, 0.13f, -49.088f), new Vector3(191.159f, 0.13f, -49.877f), new Vector3(189.576f, 0.13f, -55.673f), new Vector3(190.984f, 0.13f, -56.501f), new Vector3(195.287f, 0.13f, -52.313f), new Vector3(196.506f, 0.13f, -52.960f), new Vector3(197.666f, 0.13f, -53.395f), new Vector3(198.947f, 0.13f, -53.659f), new Vector3(200.412f, 0.13f, -53.845f), new Vector3(201.942f, 0.13f, -53.990f), new Vector3(203.309f, 0.13f, -54.074f), new Vector3(208.389f, 0.13f, -59.657f), new Vector3(213.245f, 0.13f, -59.499f), new Vector3(218.100f, 0.13f, -53.697f), new Vector3(222.248f, 0.13f, -59.434f), new Vector3(223.765f, 0.13f, -59.446f), new Vector3(225.207f, 0.13f, -59.531f), new Vector3(226.624f, 0.13f, -59.737f), new Vector3(227.055f, 0.13f, -59.838f), new Vector3(228.329f, 0.13f, -60.283f), new Vector3(229.499f, 0.13f, -60.879f), new Vector3(230.755f, 0.13f, -61.680f), new Vector3(237.991f, 0.13f, -59.432f), new Vector3(236.361f, 0.13f, -65.165f), new Vector3(237.462f, 0.13f, -65.909f), new Vector3(238.416f, 0.13f, -66.760f), new Vector3(245.883f, 0.13f, -66.178f), new Vector3(249.403f, 0.13f, -69.288f), new Vector3(253.093f, 0.13f, -72.105f), new Vector3(254.200f, 0.13f, -79.480f), new Vector3(258.279f, 0.13f, -82.092f), new Vector3(262.270f, 0.13f, -84.739f), new Vector3(269.575f, 0.13f, -83.086f), new Vector3(270.139f, 0.13f, -90.588f), new Vector3(271.773f, 0.13f, -91.895f), new Vector3(279.270f, 0.13f, -91.337f), new Vector3(282.643f, 0.13f, -94.804f), new Vector3(286.174f, 0.13f, -98.083f), new Vector3(287.937f, 0.13f, -99.614f), new Vector3(289.085f, 0.13f, -100.509f), new Vector3(290.167f, 0.13f, -101.256f), new Vector3(294.430f, 0.13f, -103.532f), new Vector3(296.042f, 0.13f, -110.925f), new Vector3(297.219f, 0.13f, -111.656f), new Vector3(298.388f, 0.13f, -112.497f), new Vector3(299.514f, 0.13f, -113.431f), new Vector3(300.614f, 0.13f, -114.449f), new Vector3(301.698f, 0.13f, -115.544f), new Vector3(302.124f, 0.13f, -116.007f), new Vector3(303.017f, 0.13f, -117.098f), new Vector3(303.705f, 0.13f, -118.188f), new Vector3(304.290f, 0.13f, -119.441f), new Vector3(311.524f, 0.13f, -121.620f), new Vector3(308.337f, 0.13f, -128.460f), new Vector3(308.861f, 0.13f, -129.751f), new Vector3(309.266f, 0.13f, -131.074f), new Vector3(309.554f, 0.13f, -132.447f), new Vector3(309.744f, 0.13f, -133.858f), new Vector3(309.825f, 0.13f, -135.211f), new Vector3(309.743f, 0.13f, -136.505f), new Vector3(309.492f, 0.13f, -137.873f), new Vector3(309.140f, 0.13f, -139.334f), new Vector3(308.743f, 0.13f, -140.752f), new Vector3(308.275f, 0.13f, -142.034f), new Vector3(308.131f, 0.13f, -143.439f), new Vector3(307.348f, 0.13f, -144.591f), new Vector3(307.043f, 0.13f, -144.946f), new Vector3(306.022f, 0.13f, -145.913f), new Vector3(304.915f, 0.13f, -146.722f), new Vector3(303.486f, 0.13f, -146.983f), new Vector3(302.250f, 0.13f, -147.541f), new Vector3(300.924f, 0.13f, -148.001f), new Vector3(299.544f, 0.13f, -148.371f), new Vector3(298.325f, 0.13f, -148.616f), new Vector3(293.960f, 0.13f, -154.657f), new Vector3(289.302f, 0.13f, -155.357f), new Vector3(283.604f, 0.13f, -150.558f), new Vector3(278.967f, 0.13f, -150.890f), new Vector3(274.148f, 0.13f, -150.903f), new Vector3(269.229f, 0.13f, -150.903f), new Vector3(264.306f, 0.13f, -150.903f), new Vector3(259.453f, 0.13f, -150.902f), new Vector3(254.642f, 0.13f, -150.667f), new Vector3(249.849f, 0.13f, -150.319f), new Vector3(245.126f, 0.13f, -149.704f), new Vector3(240.416f, 0.13f, -148.829f), new Vector3(235.702f, 0.13f, -147.775f), new Vector3(231.000f, 0.13f, -146.587f), new Vector3(229.563f, 0.13f, -146.152f), new Vector3(228.125f, 0.13f, -145.675f), new Vector3(226.820f, 0.13f, -145.157f), new Vector3(225.595f, 0.13f, -144.509f), new Vector3(224.330f, 0.13f, -143.722f), new Vector3(223.090f, 0.13f, -142.896f), new Vector3(221.704f, 0.13f, -142.459f), new Vector3(220.844f, 0.13f, -141.571f), new Vector3(220.204f, 0.13f, -140.584f), new Vector3(219.764f, 0.13f, -139.478f), new Vector3(219.520f, 0.13f, -138.275f), new Vector3(219.476f, 0.13f, -137.002f), new Vector3(219.615f, 0.13f, -135.686f), new Vector3(219.916f, 0.13f, -134.379f), new Vector3(220.380f, 0.13f, -133.124f), new Vector3(221.013f, 0.13f, -131.908f), new Vector3(221.799f, 0.13f, -130.706f), new Vector3(222.670f, 0.13f, -129.556f), new Vector3(223.581f, 0.13f, -128.560f), new Vector3(224.530f, 0.13f, -127.787f), new Vector3(225.796f, 0.13f, -127.692f), new Vector3(227.016f, 0.13f, -127.297f), new Vector3(228.455f, 0.13f, -126.956f), new Vector3(231.994f, 0.13f, -120.239f), new Vector3(233.435f, 0.13f, -119.900f), new Vector3(234.756f, 0.13f, -119.463f), new Vector3(236.098f, 0.13f, -118.886f), new Vector3(237.511f, 0.13f, -118.215f), new Vector3(238.917f, 0.13f, -117.523f), new Vector3(240.452f, 0.13f, -117.266f), new Vector3(241.553f, 0.13f, -116.537f), new Vector3(242.380f, 0.13f, -115.762f), new Vector3(242.926f, 0.13f, -114.897f), new Vector3(243.243f, 0.13f, -113.826f), new Vector3(243.399f, 0.13f, -112.551f), new Vector3(243.402f, 0.13f, -111.206f), new Vector3(243.242f, 0.13f, -109.884f), new Vector3(242.941f, 0.13f, -108.700f), new Vector3(242.509f, 0.13f, -107.808f), new Vector3(241.879f, 0.13f, -107.196f), new Vector3(240.929f, 0.13f, -106.732f), new Vector3(239.664f, 0.13f, -106.360f), new Vector3(238.122f, 0.13f, -106.555f), new Vector3(237.497f, 0.13f, -100.581f), new Vector3(232.652f, 0.13f, -99.772f), new Vector3(227.871f, 0.13f, -98.953f), new Vector3(223.151f, 0.13f, -97.917f), new Vector3(217.180f, 0.13f, -102.463f), new Vector3(213.298f, 0.13f, -96.063f), new Vector3(208.551f, 0.13f, -95.218f), new Vector3(206.304f, 0.13f, -94.699f), new Vector3(204.897f, 0.13f, -94.300f), new Vector3(203.521f, 0.13f, -93.813f), new Vector3(202.136f, 0.13f, -93.224f), new Vector3(200.700f, 0.13f, -92.560f), new Vector3(199.280f, 0.13f, -91.888f), new Vector3(197.987f, 0.13f, -91.214f), new Vector3(196.846f, 0.13f, -90.486f), new Vector3(195.805f, 0.13f, -89.644f), new Vector3(194.809f, 0.13f, -88.664f), new Vector3(193.830f, 0.13f, -87.554f), new Vector3(192.865f, 0.13f, -86.368f), new Vector3(192.044f, 0.13f, -85.297f), new Vector3(189.578f, 0.13f, -81.149f), new Vector3(182.107f, 0.13f, -79.852f), new Vector3(181.276f, 0.13f, -78.532f), new Vector3(180.444f, 0.13f, -77.225f), new Vector3(179.651f, 0.13f, -76.116f), new Vector3(178.731f, 0.13f, -75.152f), new Vector3(178.407f, 0.13f, -74.886f), new Vector3(177.211f, 0.13f, -74.059f), new Vector3(175.943f, 0.13f, -73.307f), new Vector3(174.635f, 0.13f, -72.608f), new Vector3(173.308f, 0.13f, -72.004f), new Vector3(171.894f, 0.13f, -71.467f), new Vector3(168.853f, 0.13f, -70.374f), new Vector3(167.434f, 0.13f, -69.916f), new Vector3(165.988f, 0.13f, -69.544f), new Vector3(164.494f, 0.13f, -69.227f), new Vector3(163.049f, 0.13f, -68.971f), new Vector3(161.708f, 0.13f, -68.846f), new Vector3(160.352f, 0.13f, -68.889f), new Vector3(158.847f, 0.13f, -69.050f), new Vector3(154.019f, 0.13f, -69.597f), new Vector3(151.751f, 0.13f, -69.997f), new Vector3(150.276f, 0.13f, -70.310f), new Vector3(148.843f, 0.13f, -70.688f), new Vector3(147.476f, 0.13f, -71.137f), new Vector3(146.202f, 0.13f, -71.671f), new Vector3(144.995f, 0.13f, -72.327f), new Vector3(143.799f, 0.13f, -73.115f), new Vector3(139.828f, 0.13f, -75.958f), new Vector3(137.890f, 0.13f, -77.380f), new Vector3(136.712f, 0.13f, -78.300f), new Vector3(135.644f, 0.13f, -79.249f), new Vector3(134.684f, 0.13f, -80.258f), new Vector3(133.822f, 0.13f, -81.340f), new Vector3(133.066f, 0.13f, -82.486f), new Vector3(132.431f, 0.13f, -83.682f), new Vector3(131.925f, 0.13f, -84.927f), new Vector3(131.549f, 0.13f, -86.223f), new Vector3(131.290f, 0.13f, -87.612f), new Vector3(131.103f, 0.13f, -89.103f), new Vector3(130.965f, 0.13f, -90.629f), new Vector3(130.888f, 0.13f, -92.159f), new Vector3(130.865f, 0.13f, -93.721f), new Vector3(130.872f, 0.13f, -95.284f), new Vector3(130.926f, 0.13f, -96.749f), new Vector3(130.593f, 0.13f, -98.141f), new Vector3(130.914f, 0.13f, -99.316f), new Vector3(131.434f, 0.13f, -100.327f), new Vector3(132.204f, 0.13f, -101.252f), new Vector3(133.214f, 0.13f, -102.152f), new Vector3(134.378f, 0.13f, -103.022f), new Vector3(135.838f, 0.13f, -103.374f), new Vector3(136.997f, 0.13f, -103.975f), new Vector3(138.225f, 0.13f, -104.412f), new Vector3(139.635f, 0.13f, -104.761f), new Vector3(141.122f, 0.13f, -105.083f), new Vector3(144.884f, 0.13f, -111.661f), new Vector3(149.514f, 0.13f, -112.570f), new Vector3(153.949f, 0.13f, -114.050f), new Vector3(160.420f, 0.13f, -110.302f), new Vector3(163.358f, 0.13f, -117.104f), new Vector3(167.759f, 0.13f, -118.834f), new Vector3(172.260f, 0.13f, -120.690f), new Vector3(175.163f, 0.13f, -121.963f), new Vector3(176.456f, 0.13f, -122.653f), new Vector3(177.812f, 0.13f, -123.411f), new Vector3(179.334f, 0.13f, -123.753f), new Vector3(180.409f, 0.13f, -124.543f), new Vector3(181.223f, 0.13f, -125.379f), new Vector3(181.842f, 0.13f, -126.434f), new Vector3(181.953f, 0.13f, -126.749f), new Vector3(182.280f, 0.13f, -128.105f), new Vector3(182.437f, 0.13f, -129.450f), new Vector3(182.435f, 0.13f, -130.761f), new Vector3(182.238f, 0.13f, -132.002f), new Vector3(181.844f, 0.13f, -133.178f), new Vector3(181.251f, 0.13f, -134.285f), new Vector3(180.462f, 0.13f, -135.335f), new Vector3(179.521f, 0.13f, -136.318f), new Vector3(178.504f, 0.13f, -137.170f), new Vector3(177.447f, 0.13f, -137.817f), new Vector3(176.304f, 0.13f, -138.247f), new Vector3(174.927f, 0.13f, -138.008f), new Vector3(173.478f, 0.13f, -138.153f), new Vector3(171.896f, 0.13f, -138.264f), new Vector3(167.077f, 0.13f, -138.584f), new Vector3(162.250f, 0.13f, -138.598f), new Vector3(157.362f, 0.13f, -138.599f), new Vector3(152.566f, 0.13f, -138.498f), new Vector3(147.873f, 0.13f, -138.094f), new Vector3(143.142f, 0.13f, -137.289f), new Vector3(137.355f, 0.13f, -142.174f), new Vector3(135.947f, 0.13f, -142.028f), new Vector3(134.449f, 0.13f, -141.956f), new Vector3(133.105f, 0.13f, -141.936f), new Vector3(128.320f, 0.13f, -142.426f), new Vector3(123.464f, 0.13f, -143.016f), new Vector3(117.903f, 0.13f, -137.858f), new Vector3(113.131f, 0.13f, -138.339f), new Vector3(108.581f, 0.13f, -144.298f), new Vector3(104.090f, 0.13f, -138.883f), new Vector3(102.635f, 0.13f, -138.962f), new Vector3(101.248f, 0.13f, -138.935f), new Vector3(99.916f, 0.13f, -138.774f), new Vector3(98.539f, 0.13f, -138.452f), new Vector3(98.042f, 0.13f, -138.297f), new Vector3(96.764f, 0.13f, -137.790f), new Vector3(95.686f, 0.13f, -137.186f), new Vector3(94.667f, 0.13f, -136.389f), new Vector3(93.577f, 0.13f, -135.367f)
+        };
+
+        /// <summary>
+        /// Per-EDGE (same indexing as <see cref="Circuit2IsArcEdge"/>):
+        /// true if a curb piece should be built between point i and
+        /// i+1 (either endpoint inside the curb zone — see
+        /// <see cref="Circuit2CurbPoints"/>'s comment). 118 of 385
+        /// edges are active, covering 16 separate corner-hugging runs.
+        /// </summary>
+        private static readonly bool[] Circuit2CurbActive = {
+false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+        };
+
+        /// <summary>
+        /// Builds Pista 2's greybox: asphalt, outer/inner barriers,
+        /// start/finish line and 12 checkpoint gates (start/finish + 11,
+        /// one per filleted vertex — see the round-34 comment block above).
+        /// Deliberately does not touch <see cref="CreateCourse"/> (the
+        /// already verified-on-device oval) at all — this is a fully
+        /// separate, additive method, gated by <see cref="UseTechnicalCircuit2"/>.
+        /// Grid slots and the bot path come from the
+        /// TechnicalCircuit2Configuration TrackConfigurationSO (loaded by
+        /// <see cref="LoadTrackConfiguration"/>), not from here.
+        /// </summary>
+        private static void CreateCourseTechnicalCircuit2()
+        {
+            var groundCollision = new GameObject("Grass Ground Collision (Circuit2)");
+            groundCollision.transform.position = new Vector3(Circuit2GroundCenterX, 0.06f, Circuit2GroundCenterZ);
+            var groundCollider = groundCollision.AddComponent<BoxCollider>();
+            groundCollider.size = new Vector3(Circuit2GroundSizeX, 0.02f, Circuit2GroundSizeZ);
+            groundCollider.sharedMaterial = GetLowFrictionMaterial();
+
+            var groundVisual = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            groundVisual.name = "Grass Ground (Circuit2)";
+            groundVisual.transform.position = new Vector3(Circuit2GroundCenterX, 0.058f, Circuit2GroundCenterZ); // round 37: same grass-height fix as the oval's ground plane
+            groundVisual.transform.localScale = new Vector3(Circuit2GroundSizeX / 10f, 1f, Circuit2GroundSizeZ / 10f);
+            groundVisual.GetComponent<Renderer>().sharedMaterial = CreateMaterial("Grass2", new Color(0.25f, 0.55f, 0.18f));
+            Destroy(groundVisual.GetComponent<Collider>());
+
+            var asphaltMat = CreateMaterial("Asphalt2", new Color(0.22f, 0.22f, 0.25f));
+            var whiteMat = CreateMaterial("White2", new Color(0.95f, 0.95f, 0.95f));
+
+            // Pavement: locally 8.5m wide from the hairpin exit through the
+            // grid zone (founder/reviewer request: "8-9m na largada"),
+            // tapering back to the nominal 7m (same as the oval) before
+            // turn 1 — see Circuit2Widths' round-34 Python derivation.
+            CreateVariableRibbon("Pavement2", Circuit2Centerline, Circuit2IsArcEdge, Circuit2Widths, 0.12f, asphaltMat, solidCollider: false);
+            // Round 39 (continuation 3): the 385 boxes above are now
+            // visual-only (non-solid) -- see CreatePavementMeshFloor's own
+            // doc comment for why -- and this single seamless mesh is the
+            // ONLY physical driving surface for the Carrera Kart pavement.
+            CreatePavementMeshFloor("Pavement2_MeshFloor", Circuit2Centerline, Circuit2Widths, 0.06f);
+
+            CreateWallRingFromPoints("Barrier2_Outer", Circuit2OuterBarrier, Circuit2IsArcEdge,
+                thicknessMeters: 0.5f, heightMeters: 1f, solidCollider: true, useFenceVisual: true, useTireVisual: true);
+            CreateWallRingFromPoints("Barrier2_Inner", Circuit2InnerBarrier, Circuit2IsArcEdge,
+                thicknessMeters: 0.4f, heightMeters: 0.8f, solidCollider: true, useFenceVisual: false, useTireVisual: false);
+
+            // --- GRASS SHOULDER (round 39 continuation 4: founder asked
+            // for a bit of speed loss on grass on BOTH tracks -- Circuit2
+            // had no grass grip zone at all before this) ---
+            var circuit2GrassData = ScriptableObject.CreateInstance<SurfaceDataSO>();
+            circuit2GrassData.Configure("grass_shoulder_circuit2", "Grass (Shoulder)", 0.5f, 0f, false);
+            CreateShoulderGrassZone("GrassShoulder2_Outer", Circuit2Centerline, Circuit2Widths,
+                sign: 1f, shoulderWidthMeters: 1.5f, topHeight: 0.06f, surfaceData: circuit2GrassData);
+            CreateShoulderGrassZone("GrassShoulder2_Inner", Circuit2Centerline, Circuit2Widths,
+                sign: -1f, shoulderWidthMeters: 1.5f, topHeight: 0.06f, surfaceData: circuit2GrassData);
+
+            // --- CURBS (zebras) ---
+            // Round 36 founder feedback: continuous checkered strip along
+            // the inside (apex) edge of every genuinely tight corner — see
+            // Circuit2CurbPoints'/Circuit2CurbActive's own comments for how
+            // these were computed. Non-solid, same reasoning as the oval's.
+            CreateAlternatingCurbRibbon("Curb2", Circuit2CurbPoints, Circuit2CurbActive, Circuit2IsArcEdge,
+                curbWidthMeters: 1.2f, heightMeters: 0.08f);
+
+            // --- START/FINISH LINE (non-solid, same reasoning as the oval's) ---
+            CreateTrackPieceOriented("StartFinish2_Line", new Vector3(88.012f, 0.13f, -134.091f), -138.31f, 0.3f, 8.5f, 0.02f, whiteMat, solidCollider: false);
+
+            // --- CHECKPOINTS (12 gates: start/finish + 11, one per vertex) ---
+            // Unlike the oval (whose 4 gates all happen to be axis-aligned
+            // because every stadium checkpoint sits on a straight or an
+            // arc tip), Circuit2's corners are at arbitrary angles, so
+            // these gates are ROTATED to the local track direction via
+            // CreateCheckpointOriented (new this round) instead of the
+            // oval's plain CreateCheckpoint.
+            CreateCheckpointOriented("StartFinish", new Vector3(88.012f, 1f, -134.091f), -138.31f, 0.5f, 8.5f, 0, true, Vector3.right);
+CreateCheckpointOriented("CP0", new Vector3(26.566f, 1f, -94.545f), -95.21f, 0.5f, 8.0f, 0, false, Vector3.zero);
+CreateCheckpointOriented("CP1", new Vector3(59.518f, 1f, -55.418f), -26.23f, 0.5f, 7.0f, 1, false, Vector3.zero);
+CreateCheckpointOriented("CP2", new Vector3(103.397f, 1f, -47.256f), -13.00f, 0.5f, 7.0f, 2, false, Vector3.zero);
+CreateCheckpointOriented("CP3", new Vector3(176.481f, 1f, -18.367f), 46.65f, 0.5f, 7.0f, 3, false, Vector3.zero);
+CreateCheckpointOriented("CP4", new Vector3(185.804f, 1f, -49.273f), 48.66f, 0.5f, 7.0f, 4, false, Vector3.zero);
+CreateCheckpointOriented("CP5", new Vector3(227.924f, 1f, -57.071f), 17.44f, 0.5f, 7.0f, 5, false, Vector3.zero);
+CreateCheckpointOriented("CP6", new Vector3(273.779f, 1f, -89.800f), 43.76f, 0.5f, 7.0f, 6, false, Vector3.zero);
+CreateCheckpointOriented("CP7", new Vector3(304.339f, 1f, -114.134f), 49.77f, 0.5f, 7.0f, 7, false, Vector3.zero);
+CreateCheckpointOriented("CP8", new Vector3(308.750f, 1f, -146.632f), 134.65f, 0.5f, 7.0f, 8, false, Vector3.zero);
+CreateCheckpointOriented("CP9", new Vector3(217.465f, 1f, -140.166f), -106.64f, 0.5f, 7.0f, 9, false, Vector3.zero);
+CreateCheckpointOriented("CP10", new Vector3(244.446f, 1f, -106.391f), -126.20f, 0.5f, 7.0f, 10, false, Vector3.zero);
+CreateCheckpointOriented("CP11", new Vector3(180.127f, 1f, -72.551f), -143.62f, 0.5f, 7.0f, 11, false, Vector3.zero);
+CreateCheckpointOriented("CP12", new Vector3(129.430f, 1f, -101.647f), 56.63f, 0.5f, 7.0f, 12, false, Vector3.zero);
+CreateCheckpointOriented("CP13", new Vector3(184.261f, 1f, -126.091f), 74.09f, 0.5f, 7.0f, 13, false, Vector3.zero);
+CreateCheckpointOriented("CP14", new Vector3(134.530f, 1f, -139.057f), -178.39f, 0.5f, 7.0f, 14, false, Vector3.zero);
+CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 0.5f, 7.0f, 15, false, Vector3.zero);
+        }
+
+        /// <summary>
+        /// Pista 2 counterpart of <see cref="CreateRibbon"/>: same
+        /// overlap-extension technique (stretch arc-chord edges so
+        /// neighbors overlap and cover the kink — see that method's
+        /// comment for the full round-21 rationale this reuses), but
+        /// generalized two ways: (a) <paramref name="isArcEdge"/> replaces
+        /// <see cref="IsStadiumStraightEdge"/>'s hardcoded "edge 0 or
+        /// arcSegmentsPerEnd+1" rule with real per-edge data computed in
+        /// the round-34 Python model (Circuit2 is an irregular polygon,
+        /// not a 2-straight stadium), and (b) a per-point width
+        /// (<paramref name="widthAtPoint"/>) so the grid straight can be
+        /// locally wider than the rest of the lap without a second,
+        /// separate ribbon call.
+        /// </summary>
+        private static void CreateVariableRibbon(string prefix, Vector3[] centerline, bool[] isArcEdge,
+            float[] widthAtPoint, float heightMeters, Material material, bool solidCollider = true)
+        {
+            var count = centerline.Length;
+            for (var i = 0; i < count; i++)
+            {
+                var p0 = centerline[i];
+                var p1 = centerline[(i + 1) % count];
+                var delta = p1 - p0;
+                var length = delta.magnitude;
+                var mid = (p0 + p1) * 0.5f;
+                var yaw = YawDegreesForDirection(delta.x / length, delta.z / length);
+                var pieceLength = length * ArcSegmentOverlapFactor; // round 37: always stretch (see CreateVariableRibbon's comment)
+                var width = (widthAtPoint[i] + widthAtPoint[(i + 1) % count]) * 0.5f;
+                CreateTrackPieceOriented($"{prefix}_Seg_{i:000}", mid, yaw, pieceLength, width, heightMeters, material,
+                    solidCollider: solidCollider);
+            }
+        }
+
+        /// <summary>
+        /// Round 39 (continuation 3, 2026-08-25): builds ONE continuous,
+        /// seamless mesh collider for the Circuit2 pavement's driving
+        /// surface, used alongside (not instead of) the existing
+        /// per-segment visual boxes from <see cref="CreateVariableRibbon"/>
+        /// (which are now created non-solid for this call -- see that call
+        /// site -- so they no longer provide physical collision, only the
+        /// unchanged visual).
+        ///
+        /// Why: founder playtest feedback across rounds 37-39 kept
+        /// reporting "trava"/"pulos" (catches/jumps) while driving the
+        /// Carrera Kart, even on straights, worse near curves/zebra --
+        /// present even on the known-good pre-round-39 geometry, so no
+        /// single round's data change caused it. The kart's Rigidbody has
+        /// X/Z rotation FROZEN (see KartDynamics.ConfigureRigidbody), so it
+        /// cannot physically "tip" over a bump -- which points specifically
+        /// at a well-known Unity/PhysX phenomenon: a driving surface built
+        /// from many separate BoxColliders (385 of them here, one per
+        /// pavement segment) can generate spurious, non-vertical contact
+        /// normals at the internal seams between adjacent boxes even when
+        /// the boxes are perfectly flush/coplanar, because PhysX resolves
+        /// each box independently with no notion that segment N's edge is
+        /// meant to continue smoothly into segment N+1. This is exactly
+        /// why production racing games build the drivable surface as ONE
+        /// continuous mesh collider instead of tiled primitives -- a
+        /// single mesh has no internal seams for PhysX to catch on.
+        ///
+        /// This method rebuilds the SAME pavement footprint (same
+        /// centerline, same per-point width) as a single triangle strip
+        /// instead of N boxes, so the physical floor is geometrically
+        /// identical in shape/position to before, just seamless. Left/right
+        /// offsets use the same centered-difference tangent + perpendicular
+        /// normal formula already calibrated and verified for the round-39
+        /// barrier work. Validated offline (Python) before writing this: 0
+        /// degenerate triangles, 0 wrong-winding triangles (both checked
+        /// against every one of the 770 triangles), and the tightest
+        /// corner's turn radius is 1.42x the local half-width (safely above
+        /// 1.0, so the inner edge never folds/self-intersects anywhere
+        /// around the 940m lap).
+        ///
+        /// This is a hypothesis-driven fix for a physics feel problem, not
+        /// a provable one from static analysis alone -- I cannot run Unity
+        /// from here to confirm it removes the jumps/catches. If it
+        /// doesn't help, CreateVariableRibbon's Circuit2 call can go back
+        /// to solidCollider: true (its default) and this call removed;
+        /// nothing else references this object.
+        /// </summary>
+        private static void CreatePavementMeshFloor(string name, Vector3[] centerline, float[] widthAtPoint,
+            float topHeight)
+        {
+            var count = centerline.Length;
+            var vertices = new Vector3[count * 2];
+            for (var i = 0; i < count; i++)
+            {
+                var prev = centerline[(i - 1 + count) % count];
+                var next = centerline[(i + 1) % count];
+                var tangent = new Vector2(next.x - prev.x, next.z - prev.z).normalized;
+                var leftNormal = new Vector2(-tangent.y, tangent.x);
+                var rightNormal = new Vector2(tangent.y, -tangent.x);
+                var halfWidth = widthAtPoint[i] * 0.5f;
+                var center = centerline[i];
+                vertices[i * 2] = new Vector3(center.x + leftNormal.x * halfWidth, topHeight,
+                    center.z + leftNormal.y * halfWidth);
+                vertices[i * 2 + 1] = new Vector3(center.x + rightNormal.x * halfWidth, topHeight,
+                    center.z + rightNormal.y * halfWidth);
+            }
+
+            var triangles = new int[count * 6];
+            for (var i = 0; i < count; i++)
+            {
+                var l0 = i * 2;
+                var r0 = i * 2 + 1;
+                var next = (i + 1) % count;
+                var l1 = next * 2;
+                var r1 = next * 2 + 1;
+                var t = i * 6;
+                // Winding validated offline (Python) to face up (+Y).
+                triangles[t] = l0;
+                triangles[t + 1] = r1;
+                triangles[t + 2] = r0;
+                triangles[t + 3] = l0;
+                triangles[t + 4] = l1;
+                triangles[t + 5] = r1;
+            }
+
+            var mesh = new Mesh { name = name };
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            var obj = new GameObject(name);
+            var collider = obj.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh;
+            collider.convex = false;
+            collider.sharedMaterial = GetLowFrictionMaterial();
+        }
+
+        /// <summary>
+        /// Round 39 (continuation 4): a 1.5m-wide grass "shoulder" trigger
+        /// strip running alongside the pavement, on one side only
+        /// (<paramref name="sign"/> = +1 for the outer side, -1 for the
+        /// inner side -- same left/right normal convention already
+        /// calibrated and validated for Circuit2OuterBarrier/InnerBarrier).
+        /// Reuses the per-point width array so the shoulder tracks the
+        /// pavement's own varying width exactly like the barriers do.
+        /// See this method's call site for why this is built from many
+        /// small trigger boxes instead of one continuous mesh.
+        /// </summary>
+        private static void CreateShoulderGrassZone(string prefix, Vector3[] centerline, float[] widthAtPoint,
+            float sign, float shoulderWidthMeters, float topHeight, SurfaceDataSO surfaceData)
+        {
+            var count = centerline.Length;
+            for (var i = 0; i < count; i++)
+            {
+                var p0 = centerline[i];
+                var p1 = centerline[(i + 1) % count];
+                var delta = p1 - p0;
+                var length = delta.magnitude;
+                var yaw = YawDegreesForDirection(delta.x / length, delta.z / length);
+                var pieceLength = length * ArcSegmentOverlapFactor;
+                var halfWidth0 = widthAtPoint[i] * 0.5f;
+                var halfWidth1 = widthAtPoint[(i + 1) % count] * 0.5f;
+                var avgHalfWidth = (halfWidth0 + halfWidth1) * 0.5f;
+                var mid = (p0 + p1) * 0.5f;
+                var tangentDir = delta / length;
+                var sideDir = new Vector3(-tangentDir.z, 0f, tangentDir.x) * sign;
+                var shoulderCenterOffset = avgHalfWidth + shoulderWidthMeters * 0.5f;
+                var shoulderMid = mid + sideDir * shoulderCenterOffset;
+                shoulderMid.y = topHeight;
+
+                var obj = new GameObject($"{prefix}_Seg_{i:000}");
+                obj.transform.SetPositionAndRotation(shoulderMid, Quaternion.Euler(0f, yaw, 0f));
+                var col = obj.AddComponent<BoxCollider>();
+                col.size = new Vector3(pieceLength, 0.2f, shoulderWidthMeters);
+                col.isTrigger = true;
+                var trigger = obj.AddComponent<SurfaceTrigger>();
+                trigger.Configure(surfaceData);
+            }
+        }
+
+        /// <summary>
+        /// Wall-ring counterpart of <see cref="CreateVariableRibbon"/>, for
+        /// a centerline that is ALREADY the offset ring itself (Circuit2's
+        /// outer/inner barrier arrays are pre-offset per-point in the
+        /// round-34 Python model — unlike the oval, which regenerates a
+        /// second true-circle centerline via GenerateStadiumCenterline at
+        /// a different radius, an irregular filleted polygon's offset was
+        /// computed directly, point by point, along each pavement point's
+        /// own normal — see docs/30-founder-playtest-log.md round 34).
+        /// </summary>
+        private static void CreateWallRingFromPoints(string prefix, Vector3[] points, bool[] isArcEdge,
+            float thicknessMeters, float heightMeters, bool solidCollider, bool useFenceVisual, bool useTireVisual)
+        {
+            var count = points.Length;
+            var verticalOffset = Vector3.up * (heightMeters * 0.5f);
+            for (var i = 0; i < count; i++)
+            {
+                var p0 = points[i];
+                var p1 = points[(i + 1) % count];
+                var delta = p1 - p0;
+                var length = delta.magnitude;
+                var mid = (p0 + p1) * 0.5f + verticalOffset;
+                var yaw = YawDegreesForDirection(delta.x / length, delta.z / length);
+                var pieceLength = length * ArcSegmentOverlapFactor; // round 37: always stretch (see CreateVariableRibbon's comment)
+                CreateWallOriented($"{prefix}_Seg_{i:000}", mid, yaw, pieceLength, thicknessMeters, heightMeters,
+                    solidCollider, useFenceVisual, useTireVisual);
+            }
+        }
+
+        /// <summary>
+        /// Rotated counterpart of <see cref="CreateCheckpoint"/> — needed
+        /// because Circuit2's corners sit at arbitrary angles (the oval's 4
+        /// checkpoints are all axis-aligned by construction; see
+        /// <see cref="CreateCourse"/>'s own comment on that). Local +X
+        /// (after the yaw rotation) is "along the track direction"
+        /// (<paramref name="thicknessAlongTrack"/>), local Z is "across the
+        /// track" (<paramref name="gateWidthAcrossTrack"/>) — same axis
+        /// convention as <see cref="CreateTrackPieceOriented"/>/
+        /// <see cref="CreateWallOriented"/>.
+        /// </summary>
+        private static void CreateCheckpointOriented(string name, Vector3 position, float yawDegrees,
+            float thicknessAlongTrack, float gateWidthAcrossTrack, int index, bool isStartFinish,
+            Vector3 crossingDirection)
+        {
+            var obj = new GameObject(name);
+            obj.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yawDegrees, 0f));
+            var col = obj.AddComponent<BoxCollider>();
+            col.size = new Vector3(thicknessAlongTrack, 3f, gateWidthAcrossTrack);
+            col.isTrigger = true;
+            var cp = obj.AddComponent<CheckpointTrigger>();
+            // Round 39 (continuation) fix: every StartFinish call site here
+            // passed the constant Vector3.right as the required forward-
+            // crossing direction, in WORLD space, ignoring this
+            // checkpoint's own yawDegrees. That constant was correct for
+            // the Oval's separate (older, unrotated) CreateCheckpoint
+            // helper -- its comment literally says "the clockwise
+            // prototype crosses start/finish toward +X" -- but Circuit2's
+            // start/finish line sits at an arbitrary track angle
+            // (yawDegrees=-138.31 here), so the real direction of travel
+            // there is roughly (-0.77, 0, 0.64), not (1, 0, 0). Dot product
+            // of those two is NEGATIVE, so CheckpointTrigger.IsCrossingForward
+            // returned false on every single correct lap -- and because
+            // RegisterCheckpointHit's isStartFinish branch just does
+            // "if (!isCrossingForward) return;" with no side effect, this
+            // produced exactly the reported symptom: no lap completes, no
+            // "invalidated" message either, nothing happens at all.
+            // Fix: derive the forward direction from this checkpoint's own
+            // rotation instead of trusting a passed-in world-space
+            // constant, so it is correct regardless of the angle this
+            // particular checkpoint happens to sit at.
+            var effectiveCrossingDirection = isStartFinish
+                ? obj.transform.rotation * Vector3.right
+                : crossingDirection;
+            cp.Configure(index, isStartFinish, effectiveCrossingDirection);
+        }
+
         private static void CreateZebraCurb(string cornerName, Vector3 center, Vector3 footprint, int segmentsPerSide = 3)
         {
             var segX = footprint.x / segmentsPerSide;
@@ -817,7 +1447,7 @@ namespace RKW.Physics
         /// (round 1-18) stays byte-for-byte untouched, zero regression risk
         /// on track geometry already confirmed working.
         /// </summary>
-        private static void CreateTrackPieceOriented(string name, Vector3 position, float yawDegrees,
+        private static GameObject CreateTrackPieceOriented(string name, Vector3 position, float yawDegrees,
             float lengthMeters, float widthMeters, float heightMeters, Material material,
             bool solidCollider = true)
         {
@@ -835,6 +1465,15 @@ namespace RKW.Physics
             {
                 collider.isTrigger = true;
             }
+            // Round 38 founder feedback: "a zebra poderia dar uma sensacao
+            // as vezes vibrar o celular... mas nao é pra tirar velocidade
+            // nem travar" -- returning the piece (was void) so curb
+            // segments specifically can be tagged with CurbZoneMarker
+            // right after creation (see both CreateAlternatingCurbRibbon
+            // overloads below) without touching this method's own
+            // physics/visual behavior for any of its other callers, all of
+            // which still simply ignore the return value.
+            return piece;
         }
 
         /// <summary>
@@ -956,7 +1595,7 @@ namespace RKW.Physics
         /// round 21.
         /// </summary>
         private static void CreateRibbon(string prefix, List<Vector3> centerline, float widthMeters,
-            float heightMeters, Material material, int arcSegmentsPerEnd)
+            float heightMeters, Material material, int arcSegmentsPerEnd, bool solidCollider = true)
         {
             var count = centerline.Count;
             for (var i = 0; i < count; i++)
@@ -970,7 +1609,8 @@ namespace RKW.Physics
                 var pieceLength = IsStadiumStraightEdge(i, arcSegmentsPerEnd)
                     ? length
                     : length * ArcSegmentOverlapFactor;
-                CreateTrackPieceOriented($"{prefix}_Seg_{i:00}", mid, yaw, pieceLength, widthMeters, heightMeters, material);
+                CreateTrackPieceOriented($"{prefix}_Seg_{i:00}", mid, yaw, pieceLength, widthMeters, heightMeters, material,
+                    solidCollider: solidCollider);
             }
         }
 
@@ -1001,6 +1641,88 @@ namespace RKW.Physics
                     : length * ArcSegmentOverlapFactor;
                 CreateWallOriented($"{prefix}_Seg_{i:00}", mid, yaw, pieceLength, thicknessMeters, heightMeters,
                     solidCollider, useFenceVisual, useTireVisual);
+            }
+        }
+
+        /// <summary>
+        /// Round-36 founder feedback ("zebra ideal ... fica bem próxima
+        /// as curvas ... não aquele bloco grande e travado"): replaces
+        /// the old static square curb block with a continuous checkered
+        /// strip that follows the curve itself, built with the same
+        /// overlapping-segment technique as <see cref="CreateRibbon"/>/
+        /// <see cref="CreateWallRibbon"/> (see those methods' comments
+        /// for the round-21 "no joint squares" rationale) — but only
+        /// along the curved (non-straight) portion of the centerline,
+        /// alternating red/white per segment for the classic curb look.
+        /// Oval overload: uses <see cref="IsStadiumStraightEdge"/> to
+        /// skip the two straights (every arc edge gets a curb piece —
+        /// the whole semicircle end, not a narrow apex slice, since the
+        /// stadium's curve is uniformly tight along its whole length).
+        /// </summary>
+        private static void CreateAlternatingCurbRibbon(string prefix, List<Vector3> centerline,
+            int arcSegmentsPerEnd, float curbWidthMeters, float heightMeters)
+        {
+            var count = centerline.Count;
+            var matRed = CreateMaterial($"{prefix}_Red", new Color(0.85f, 0.12f, 0.12f));
+            var matWhite = CreateMaterial($"{prefix}_White", new Color(0.92f, 0.92f, 0.92f));
+            for (var i = 0; i < count; i++)
+            {
+                if (IsStadiumStraightEdge(i, arcSegmentsPerEnd))
+                {
+                    continue;
+                }
+
+                var p0 = centerline[i];
+                var p1 = centerline[(i + 1) % count];
+                var delta = p1 - p0;
+                var length = delta.magnitude;
+                var mid = (p0 + p1) * 0.5f + Vector3.up * 0.13f;
+                var yaw = YawDegreesForDirection(delta.x / length, delta.z / length);
+                var pieceLength = length; // round 37: no stretch -- overlap caused red/white z-fighting flicker
+                var isRed = i % 2 == 0;
+                var curbPiece = CreateTrackPieceOriented($"{prefix}_Seg_{i:00}", mid, yaw, pieceLength, curbWidthMeters,
+                    heightMeters, isRed ? matRed : matWhite, solidCollider: false);
+                curbPiece.AddComponent<CurbZoneMarker>();
+            }
+        }
+
+        /// <summary>
+        /// Circuit2 counterpart of the <see cref="List{Vector3}"/>
+        /// overload above: same overlapping-segment/checkered technique,
+        /// but driven by an explicit per-edge active mask
+        /// (<paramref name="edgeActive"/>, see
+        /// <see cref="Circuit2CurbActive"/>'s comment) instead of the
+        /// stadium's straight/arc rule, since Circuit2 is an irregular
+        /// polygon extracted from a real photo (not a 2-straight
+        /// stadium) with only SOME of its curves tight enough to need a
+        /// curb. <paramref name="centerline"/> points already carry
+        /// their own y (see <see cref="Circuit2CurbPoints"/>), so no
+        /// extra vertical offset is added here.
+        /// </summary>
+        private static void CreateAlternatingCurbRibbon(string prefix, Vector3[] centerline, bool[] edgeActive,
+            bool[] isArcEdge, float curbWidthMeters, float heightMeters)
+        {
+            var count = centerline.Length;
+            var matRed = CreateMaterial($"{prefix}_Red", new Color(0.85f, 0.12f, 0.12f));
+            var matWhite = CreateMaterial($"{prefix}_White", new Color(0.92f, 0.92f, 0.92f));
+            for (var i = 0; i < count; i++)
+            {
+                if (!edgeActive[i])
+                {
+                    continue;
+                }
+
+                var p0 = centerline[i];
+                var p1 = centerline[(i + 1) % count];
+                var delta = p1 - p0;
+                var length = delta.magnitude;
+                var mid = (p0 + p1) * 0.5f;
+                var yaw = YawDegreesForDirection(delta.x / length, delta.z / length);
+                var pieceLength = length; // round 37: no stretch -- overlap caused red/white z-fighting flicker
+                var isRed = i % 2 == 0;
+                var curbPiece = CreateTrackPieceOriented($"{prefix}_Seg_{i:000}", mid, yaw, pieceLength, curbWidthMeters,
+                    heightMeters, isRed ? matRed : matWhite, solidCollider: false);
+                curbPiece.AddComponent<CurbZoneMarker>();
             }
         }
 
@@ -1148,7 +1870,95 @@ namespace RKW.Physics
                 new Color(0.15f, 0.35f, 0.85f), playerRaceNumber);
             dynamics.gameObject.AddComponent<KartPrototypeInput>();
             dynamics.gameObject.AddComponent<KartAudioBridge>();
+            // Round 38 founder feedback: "a zebra poderia dar uma sensacao
+            // as vezes vibrar o celular" -- player-only (a phone vibrates,
+            // bots don't need to "feel" anything), see
+            // KartCurbHapticsController's own class doc.
+            dynamics.gameObject.AddComponent<KartCurbHapticsController>();
+            // Round 39 (continuation 4): founder asked for vibration when
+            // hitting a wall or another kart, mirroring the curb-vibration
+            // pattern just above. See KartImpactHapticsController's own
+            // class doc for why it does NOT reuse CollisionHandler as a
+            // component (only its math helper).
+            dynamics.gameObject.AddComponent<KartImpactHapticsController>();
             return dynamics;
+        }
+
+        /// <summary>
+        /// Round 37 founder feedback: "falta nas 2 pistas o desenho da
+        /// largada no posicionamento do kart" -- draws a marking at every
+        /// grid slot so the player can see exactly where each of the 10
+        /// karts should line up (the start/finish LINE already existed;
+        /// the individual grid BOXES never did).
+        ///
+        /// Round 38 founder feedback: "colocou um bloco amarelo no chao
+        /// achei bem grosseiro no kart real e somente 3 linhas brancas
+        /// envolta do carrinho quase um quadrado aberto na traseira" --
+        /// replaced the single solid yellow block with 3 thin white lines
+        /// (left, right, front) forming an open-backed box, matching how a
+        /// real kart track paints its grid boxes (the kart enters from
+        /// behind, so that side is left open). While rebuilding this, also
+        /// fixed a real orientation bug the old block quietly had: it
+        /// passed slot.YawDegrees (the KART yaw convention, local +Z =
+        /// forward -- see the round-36 grid-slot-yaw comment where this
+        /// convention was first pinned down) straight into
+        /// CreateTrackPieceOriented, which expects the TRACK-PIECE
+        /// convention (local +X = length direction, off by a fixed +90
+        /// degrees from the kart convention). That made the old block's
+        /// long side sit crosswise to the kart instead of running the same
+        /// way it faces -- part of why it read as "grosseiro" even before
+        /// considering the color/shape. This version computes each line's
+        /// own forward/right directions from slot.YawDegrees via
+        /// Quaternion.Euler (the same math Unity itself uses to orient the
+        /// kart), so every line is guaranteed aligned with the kart that
+        /// actually spawns there.
+        ///
+        /// Still non-solid, same reasoning as the curbs/start-finish line:
+        /// a wheel-less rigid-box kart has no suspension to "climb" a
+        /// raised marking anyway, so there is nothing gained by making
+        /// this solid.
+        /// </summary>
+        private static void CreateGridSlotMarkers(TrackConfigurationSO trackConfiguration)
+        {
+            if (trackConfiguration == null)
+            {
+                return;
+            }
+
+            const float boxLengthMeters = 2.6f;
+            const float boxWidthMeters = 1.9f;
+            const float lineThicknessMeters = 0.12f;
+            const float heightMeters = 0.02f;
+            var halfLength = boxLengthMeters * 0.5f;
+            var halfWidth = boxWidthMeters * 0.5f;
+
+            var markMat = CreateMaterial("GridSlotMark", Color.white);
+            var slots = trackConfiguration.GridSlots;
+            for (var i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                var rotation = Quaternion.Euler(0f, slot.YawDegrees, 0f);
+                var forward = rotation * Vector3.forward;
+                var right = rotation * Vector3.right;
+                var center = slot.WorldPosition;
+                center.y = 0.11f;
+
+                // Side lines run the full box length along the kart's own
+                // forward direction, one on each side.
+                var sideYaw = YawDegreesForDirection(forward.x, forward.z);
+                CreateTrackPieceOriented($"GridMark_{slot.Position:00}_L", center - right * halfWidth, sideYaw,
+                    boxLengthMeters, lineThicknessMeters, heightMeters, markMat, solidCollider: false);
+                CreateTrackPieceOriented($"GridMark_{slot.Position:00}_R", center + right * halfWidth, sideYaw,
+                    boxLengthMeters, lineThicknessMeters, heightMeters, markMat, solidCollider: false);
+
+                // Front line closes the box ahead of the kart (the
+                // direction it will drive off toward). No line behind --
+                // that is the "aberto na traseira" opening the kart enters
+                // through.
+                var frontYaw = YawDegreesForDirection(right.x, right.z);
+                CreateTrackPieceOriented($"GridMark_{slot.Position:00}_F", center + forward * halfLength, frontYaw,
+                    boxWidthMeters, lineThicknessMeters, heightMeters, markMat, solidCollider: false);
+            }
         }
 
         /// <summary>Fisher-Yates shuffle of the track's grid slot indices (0..GridSlots.Count-1) — one random starting order per race, shared by the player and every bot.</summary>
@@ -1388,6 +2198,14 @@ namespace RKW.Physics
                 spinVisual.Configure(dynamics);
             }
 
+            // Round 40: same wiring, for the exhaust smoke puffs (see
+            // CreateKartVisual/KartExhaustSmokeController).
+            var smokeVisual = visual.GetComponent<KartExhaustSmokeController>();
+            if (smokeVisual != null)
+            {
+                smokeVisual.Configure(dynamics);
+            }
+
             return dynamics;
         }
 
@@ -1411,6 +2229,8 @@ namespace RKW.Physics
             {
                 return;
             }
+
+            _currentPlayerKartModelResourcePath = kartModelResourcePath;
 
             var oldVisual = dynamics.VisualRoot;
             if (oldVisual != null)
@@ -1438,6 +2258,12 @@ namespace RKW.Physics
             if (newSpinVisual != null)
             {
                 newSpinVisual.Configure(dynamics);
+            }
+
+            var newSmokeVisual = newVisual.GetComponent<KartExhaustSmokeController>();
+            if (newSmokeVisual != null)
+            {
+                newSmokeVisual.Configure(dynamics);
             }
         }
 
@@ -1713,6 +2539,31 @@ namespace RKW.Physics
             if (!addedAnyWheelSpin)
             {
                 Destroy(wheelSpinVisual);
+            }
+
+            // Round 40 founder request: "nao da pra ver a fumacinha
+            // saindo do kart novo" -- see KartExhaustSmokeController's
+            // class doc for the full reasoning.
+            var smokeParts = FindPartsByPrefixes(instance.transform, "smoke_puff");
+            if (smokeParts.Count > 0)
+            {
+                var smokeBounds = ComputeRendererBounds(smokeParts);
+                foreach (var smokePart in smokeParts)
+                {
+                    smokePart.gameObject.SetActive(false);
+                }
+
+                if (smokeBounds != null)
+                {
+                    var smokeAnchor = new GameObject("ExhaustSmokeAnchor");
+                    smokeAnchor.transform.SetParent(instance.transform, false);
+                    smokeAnchor.transform.position = smokeBounds.Value.center;
+                    smokeAnchor.transform.rotation = instance.transform.rotation;
+
+                    var smokeController = instance.AddComponent<KartExhaustSmokeController>();
+                    var smokeMaterial = CreateMaterial("ExhaustSmokePuff", new Color(0.55f, 0.55f, 0.55f));
+                    smokeController.SetEmissionPoint(smokeAnchor.transform, smokeMaterial);
+                }
             }
 
             return instance.transform;

@@ -44,6 +44,15 @@ namespace RKW.Physics
         private KartDynamics _dynamics;
         private float _maxSteeringAngleDegrees = 30f;
 
+        // Round 40 (2026-08-26): see this class's doc comment above --
+        // the real physics steering angle (24-28 degrees depending on
+        // category) reads as too subtle on screen, so the WHEEL PIVOTS
+        // (not the physics, not the cockpit wheel prop) turn further than
+        // the real angle for a clearer visual cue, capped so it never
+        // looks physically absurd even at a category's largest real angle.
+        private const float VisualFrontWheelExaggerationMultiplier = 1.6f;
+        private const float MaxVisualFrontWheelAngleDegrees = 38f;
+
         /// <summary>
         /// Set once, right after this component is created inside
         /// CreateKartVisual — any of the three may be null (e.g. a future
@@ -84,14 +93,22 @@ namespace RKW.Physics
 
             var steeringInput = _dynamics.SteeringInput;
 
+            // Round 40: visual-only exaggeration, see the fields' comment
+            // above -- the cockpit wheel prop below still uses the raw
+            // steeringInput directly (its own 90-degree range already
+            // reads clearly, no exaggeration needed there).
+            var visualFrontWheelDegrees = Mathf.Clamp(
+                steeringInput * _maxSteeringAngleDegrees * VisualFrontWheelExaggerationMultiplier,
+                -MaxVisualFrontWheelAngleDegrees, MaxVisualFrontWheelAngleDegrees);
+
             if (_frontLeftPivot != null)
             {
-                _frontLeftPivot.localRotation = Quaternion.Euler(0f, steeringInput * _maxSteeringAngleDegrees, 0f);
+                _frontLeftPivot.localRotation = Quaternion.Euler(0f, visualFrontWheelDegrees, 0f);
             }
 
             if (_frontRightPivot != null)
             {
-                _frontRightPivot.localRotation = Quaternion.Euler(0f, steeringInput * _maxSteeringAngleDegrees, 0f);
+                _frontRightPivot.localRotation = Quaternion.Euler(0f, visualFrontWheelDegrees, 0f);
             }
 
             if (_steeringWheelProp != null)

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RKW.Track::RKW.Track.TrackConfigurationSO
   trackConfigurationId: oval-mvp-cw
   trackId: oval-mvp
-  displayName: Oval MVP (Clockwise)
+  displayName: Circuito Oval
   direction: 0
   gridSlots:
   - position: 1

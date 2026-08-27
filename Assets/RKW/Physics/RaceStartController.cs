@@ -52,6 +52,23 @@ namespace RKW.Physics
             {
                 SetInputEnabled(true);
                 _released = true;
+                // Round 38 founder feedback: solo mode's pole-position fix
+                // (KartPhysicsPrototypeBootstrap.OnRaceSetupConfirmed)
+                // looked correct on review but was reported as not
+                // working -- logging the player's position at the exact
+                // moment the race actually starts (input released) so it
+                // can be compared, via logcat, against the position that
+                // block applied right after race setup was confirmed. If
+                // they match, the bug is elsewhere (stale build, or a
+                // rendering/visual read of the wrong grid marker); if they
+                // differ, something between setup-confirm and race-start
+                // is moving the kart.
+                if (_playerInput != null)
+                {
+                    var playerPositionLabel = _playerInput.transform.position.ToString("F2");
+                    Debug.Log("RaceStartController: input released, player position=" +
+                        $"{playerPositionLabel}.");
+                }
             }
 
             if (_released && _elapsed >= StartCount * SecondsPerCount + GoDisplaySeconds)

@@ -643,6 +643,66 @@ namespace RKW.Physics
             return Mathf.Clamp01(t) * Mathf.Clamp01(maxBrakeInput);
         }
 
+        // Round 40 (2026-08-26) founder feedback: bots reported "loucos"
+        // (crazy), and a documented open gap from round 23 remained: "a
+        // real 'bateu na traseira' cause is probably a bot simply having
+        // no notion of a slow/stationary kart directly ahead at all -- no
+        // obstacle-avoidance/braking-for-rival logic exists yet. Left as
+        // an open problem for a dedicated round rather than guessing
+        // again." This is that dedicated round: a simple following-
+        // distance cap, the same idea as a car's adaptive cruise control
+        // -- a bot never accelerates past a rival directly ahead once
+        // inside a caution zone, and actively brakes once inside the
+        // minimum safety gap. Deliberately produces only an additional
+        // speed CAP (like the existing cornering targetSpeedMps) rather
+        // than its own throttle/brake formulas, so KartBotController can
+        // combine it with the cornering cap via a plain Mathf.Min and
+        // reuse CalculateThrottleForTargetSpeed/CalculateBrakeForTargetSpeed
+        // unchanged for both.
+        /// <summary>
+        /// Maximum speed a bot should allow itself given a rival directly
+        /// ahead, or <see cref="float.PositiveInfinity"/> if no rival is
+        /// close/aligned enough to matter (no cap). Returns infinity when
+        /// <paramref name="distanceAheadMeters"/> is zero or negative (the
+        /// sentinel for "no rival found"), when the rival is not roughly
+        /// in the same lane (<paramref name="lateralOffsetMeters"/> beyond
+        /// <paramref name="laneHalfWidthMeters"/>), or when it is already
+        /// further away than <paramref name="cautionZoneMeters"/>. Inside
+        /// the caution zone, caps at the rival's own speed (never
+        /// accelerate past a kart directly ahead); inside the tighter
+        /// <paramref name="minFollowGapMeters"/>, caps BELOW the rival's
+        /// speed proportionally to how deep inside that gap the bot
+        /// already is, so it actively brakes and opens the gap back up
+        /// instead of just holding station bumper-to-bumper.
+        /// </summary>
+        public static float CalculateFollowingSafeSpeedMetersPerSecond(
+            float distanceAheadMeters, float lateralOffsetMeters, float rivalSpeedMps,
+            float laneHalfWidthMeters, float minFollowGapMeters, float cautionZoneMeters)
+        {
+            if (distanceAheadMeters <= 0f || distanceAheadMeters >= cautionZoneMeters)
+            {
+                return float.PositiveInfinity;
+            }
+
+            if (Mathf.Abs(lateralOffsetMeters) > laneHalfWidthMeters)
+            {
+                return float.PositiveInfinity;
+            }
+
+            var rivalSpeed = Mathf.Max(0f, rivalSpeedMps);
+
+            if (distanceAheadMeters <= minFollowGapMeters)
+            {
+                var closeness = distanceAheadMeters / Mathf.Max(minFollowGapMeters, 0.01f);
+                return rivalSpeed * closeness;
+            }
+
+            // Between the minimum gap and the caution zone: simple "never
+            // accelerate past a kart directly ahead" cap -- the outer band
+            // of a real adaptive cruise control.
+            return rivalSpeed;
+        }
+
         /// <summary>
         /// True once the bot is close enough to its target waypoint that
         /// the upcoming corner's speed limit is actually relevant — a

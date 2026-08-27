@@ -219,7 +219,14 @@ namespace RKW.Physics
                 var toOther = other.transform.position - myPosition;
                 toOther.y = 0f;
                 var distance = toOther.magnitude;
-                if (distance < 0.05f)
+                // Round 39 (continuation 5): once karts are already this
+                // close (about one kart length, center-to-center -- close
+                // enough to be touching/nearly touching), treat it as
+                // contact, not drafting -- see this method's own doc
+                // comment above for the full reasoning. tuning is never
+                // null here (FixedUpdate already returned early otherwise).
+                var minimumDraftDistance = tuning.KartLengthMeters;
+                if (distance < minimumDraftDistance)
                 {
                     continue;
                 }
@@ -263,12 +270,15 @@ namespace RKW.Physics
         private void ApplyLongitudinalForces(float forwardSpeed)
         {
             var direction = forwardSpeed >= 0f ? 1f : -1f;
+            // Round 39 (continuation 4): see EnforceSpeedLimit below for the
+            // matching top-speed half of this change.
+            var effectiveMaxSpeed = tuning.MaxSpeedMetersPerSecond * _surfaceGripMultiplier;
             var acceleration = KartDynamicsMath.CalculateAccelerationMetersPerSecondSquared(
                 forwardSpeed,
-                tuning.MaxSpeedMetersPerSecond,
+                effectiveMaxSpeed,
                 tuning.ZeroToMaxSeconds);
 
-            if (_smoothedThrottle > 0f && forwardSpeed < tuning.MaxSpeedMetersPerSecond)
+            if (_smoothedThrottle > 0f && forwardSpeed < effectiveMaxSpeed)
             {
                 _body.AddForce(transform.forward * (acceleration * _smoothedThrottle), ForceMode.Acceleration);
             }
@@ -431,13 +441,25 @@ namespace RKW.Physics
 
         private void EnforceSpeedLimit()
         {
+            // Round 39 (continuation 4): without this, a kart that reached
+            // top speed on pavement and then rolled onto grass would keep
+            // coasting at full speed forever, since nothing else in this
+            // method ever slows the kart down -- only clamps an overshoot.
+            // NOTE (honest caveat): this clamps speed down IMMEDIATELY on
+            // entering a low-grip zone at high speed, since this method
+            // runs every physics step. If a kart enters grass at very high
+            // speed this could feel like a sudden brake rather than a
+            // gradual slow-down; a smoother version would need a proper
+            // deceleration force instead of a hard clamp. Flagging this so
+            // it can be revisited if it feels wrong in testing.
+            var effectiveMaxSpeed = tuning.MaxSpeedMetersPerSecond * _surfaceGripMultiplier;
             var localVelocity = transform.InverseTransformDirection(_body.linearVelocity);
-            if (localVelocity.z <= tuning.MaxSpeedMetersPerSecond)
+            if (localVelocity.z <= effectiveMaxSpeed)
             {
                 return;
             }
 
-            localVelocity.z = tuning.MaxSpeedMetersPerSecond;
+            localVelocity.z = effectiveMaxSpeed;
             _body.linearVelocity = transform.TransformDirection(localVelocity);
         }
 

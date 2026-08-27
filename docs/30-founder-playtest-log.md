@@ -1983,6 +1983,1295 @@ tarefa recomendada pra próxima conversa, com contexto fresco.
 - Bots ainda precisam de atenção (não tocado nesta rodada).
 - Pasta `_to_delete` com arquivos de trava do Git — segue não investigada.
 
+## Rodada — 2026-08-25 (rodada 34: Pista 2 — traçado validado, greybox implementado, aguardando seu teste real)
+
+Você aprovou o rascunho da Pista 2 (circuito técnico com chicane/S e hairpin,
+~1km) como um "greybox experimental", condicionado a resolver antes de
+investir muito: posição da largada/grid, largura local, o setor 7-8-9, o
+raio real do kart nas curvas, os bots e os checkpoints. Pediu pra eu montar
+uma versão simples na Unity (asfalto, barreiras, checkpoints, grid, câmera)
+e instalar no seu Galaxy S25. Fiz a implementação completa; a parte que só
+você consegue fazer daqui (rodar o Unity de verdade) está descrita no final.
+
+**1) Largada e grid — resolvido.** A largada (e as 10 vagas do grid, em 5
+filas de 2, alternadas) agora ficam 40 a 68 metros dentro da reta principal,
+claramente longe da curva 10 (o hairpin) e com 138 metros de reta livre
+até a frenagem da curva 1 — bem diferente do desenho anterior, onde a
+largada quase encostava na saída do hairpin.
+
+**2) Largura — parcialmente resolvido, resto fica pra depois do teste
+real.** A reta da largada agora tem 8,5 metros (era 7m fixo), com um
+afunilamento suave de volta a 7m antes da curva 1 — atende o pedido mais
+concreto ("8-9m na largada"). NÃO fiz o alargamento específico no hairpin
+nem as áreas de escape nas curvas 3/5/7/8/10 — são mudanças de geometria
+mais trabalhosas, e como você mesmo concluiu, uma volta real vai dizer mais
+sobre se elas são realmente necessárias do que eu adivinhar agora. Fica
+anotado como pendência, não esquecido.
+
+**3) Setor técnico 7-8-9 — ainda não posso confirmar, só você dirigindo.**
+Mantive o traçado aprovado (não mudei a geometria das curvas). Essa é
+exatamente a pergunta que só um teste real responde.
+
+**4) Raio real do kart nas curvas — verifiquei com os números de verdade
+do jogo, não só a geometria.** Usei os dados reais de cada categoria
+(entre-eixos 1,05m, esterço máximo 24°/28°, grip lateral, desaceleração de
+frenagem) dos arquivos de tuning atuais:
+
+- Raio mínimo de giro do kart (Ackermann): ~2,0-2,4m — bem menor que a
+  curva mais fechada da pista (hairpin, ~9,8m), então geometricamente o
+  kart faz a curva sem problema, ela só vai exigir freada de verdade.
+- Curva 8 (o "S" técnico) é a mais exigente de frear: o kart Sport+ (85
+  km/h) precisa de ~15 dos 23 metros de reta disponíveis pra chegar na
+  velocidade da curva — folga de só ~8m. É apertada, mas cabe.
+- O hairpin (curva 10), apesar de mais fechado, tem 141 metros de reta
+  antes dele — folga enorme (mais de 120m) pra qualquer categoria frear.
+
+**5) Bots — mantive como um ponto em aberto, de propósito.** Os bots vão
+seguir o mesmo traçado (agora como uma lista de ~200 pontos ao longo da
+pista) sem tratamento especial pro hairpin ou pro setor técnico. Como você
+mesmo notou, esse formato é bom justamente pra revelar onde a IA atual
+tem problema — não tentei adivinhar isso antes do teste.
+
+**6) Checkpoints — resolvido, mais robusto que a pista atual.** A pista
+antiga (oval) tem 4 checkpoints. A Pista 2 tem 12 (largada/chegada + 11,
+um em cada curva) — cobre bem mais o traçado contra corte de caminho,
+incluindo especificamente o ponto onde o modelo em Python achou a menor
+distância real entre trechos não vizinhos da pista (perto do hairpin).
+
+**O que foi IMPLEMENTADO nesta rodada (código escrito e revisado por mim,
+mas ainda não compilado — ver observação importante no final):**
+
+- Todo o traçado da Pista 2 (pista, barreira externa, barreira interna,
+  largura variável na largada) como um novo método separado
+  `CreateCourseTechnicalCircuit2()`, sem tocar no código da pista atual.
+- 12 checkpoints rotacionados (a pista antiga só tinha checkpoints retos,
+  porque suas curvas caem certinho nos eixos X/Z do mundo; a Pista 2 tem
+  curvas em qualquer ângulo, então criei uma versão que gira o portal de
+  checkpoint pra encaixar em cada curva).
+- Um novo arquivo de configuração da pista
+  (`TechnicalCircuit2Configuration.asset`) com as 10 vagas do grid, os 12
+  checkpoints, e o traçado completo (para os bots seguirem).
+- Uma chave simples (`UseTechnicalCircuit2 = true`) que decide qual das
+  duas pistas o jogo carrega neste build — não é uma tela de seleção de
+  pista de verdade (isso ainda não existe no jogo), é só um interruptor
+  pra testar uma pista de cada vez. Pra voltar a pista antiga, é só trocar
+  esse `true` por `false` e gerar um novo build.
+
+**O que NÃO foi feito (fica pra depois do teste real, de propósito):**
+alargamento do hairpin, áreas de escape específicas, decoração (guias
+zebra, postos de marshal, cerca, prédio de pit), e uma tela de verdade
+pra escolher a pista.
+
+**Observação importante — o que eu NÃO consigo verificar daqui.**
+
+Diferente das mudanças pequenas das rodadas anteriores, esta foi grande o
+bastante (uns 250 linhas de código novo + um arquivo de dados com quase
+800 linhas) que eu não confio só na revisão manual. O problema é que esta
+conexão com o seu computador roda dentro de uma "caixa" Linux separada, que
+NÃO tem acesso ao Unity de verdade instalado no seu Mac (o script
+`scripts/build_deploy_verify.sh` que já compila, testa, builda e instala no
+seu Galaxy tenta chamar o Unity num caminho de macOS que essa caixa Linux
+não enxerga). Ou seja: eu escrevi e revisei o código com todo cuidado
+manualmente (toda chave/parêntese conferida, toda assinatura de função
+conferida contra o código real, todos os arrays de dados com o mesmo
+tamanho), mas a única forma de saber com certeza se compila é você rodar
+no seu próprio terminal.
+
+**O que eu peço pra você rodar** (mesmo comando que você já usa, sem nada
+novo):
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Isso vai (1) rodar os testes automáticos, (2) compilar, (3) instalar no seu
+Galaxy S25. Se der erro de compilação, me manda a mensagem de
+`rkw_build.log` (ou `rkw_tests.log` se travar nos testes) que eu corrijo na
+hora. Se compilar e instalar, você já estará dirigindo a Pista 2 na
+primeira abertura do app (é a pista padrão neste build).
+
+### Pendências desta rodada
+
+- Rodar `scripts/build_deploy_verify.sh` e me avisar o resultado (sucesso
+  ou a mensagem de erro).
+- Depois de dirigir: sua impressão sobre o setor 7-8-9 (S ou chicane de
+  verdade?), a curva 8 (frenagem apertada demais?), o hairpin, e como os
+  bots se saem.
+- Alargamento do hairpin e áreas de escape (3/5/7/8/10) — deliberadamente
+  não feito, decidir prioridade após o teste.
+- Tela de seleção de pista de verdade — ainda não existe; hoje é só a
+  chave `UseTechnicalCircuit2` no código.
+- Git: nada foi commitado nesta rodada (mudanças ainda no seu computador).
+
+## Atualização — mesmo dia (rodada 34, continuação: Pista 2 reprovada e pausada)
+
+Você testou o greybox da Pista 2 no aparelho e reprovou: "tem praticamente
+só reta, 1 ou 2 pontos de freio, não ficou do jeito que pensei" e o kart
+"derrapando do nada" em alguns momentos.
+
+Investiguei os dois pontos:
+
+**"Só reta"**: confirmado pelos números. Das 11 curvas do traçado, só a 8
+(o S técnico) e a 10 (hairpin) realmente exigiam frear — as outras 9
+(curvas 1 a 7, principalmente) tinham raio grande demais (22 a 42 metros)
+e podiam ser feitas quase sem tirar o pé, em qualquer categoria de kart.
+Um traçado com 11 vértices no papel, mas que na prática dirige como um
+oval largo com dois pontos de interesse.
+
+**"Derrapando do nada"**: você confirmou que acontece justamente nas
+curvas abertas/largas — não nas fechadas (8 e o hairpin), onde seria
+esperado. Minha hipótese (não confirmada, só embasada): exatamente essas
+curvas "quase retas" colocavam o kart numa faixa de velocidade bem no
+limite da aderência sem o jogador nunca precisar frear de propósito —
+uma zona instável, diferente de "curva fechada, freei, contornei com
+margem". Fica como hipótese de trabalho, não fato estabelecido.
+
+Redesenhei (só no modelo Python, sem tocar em código) uma versão 2 do
+mesmo traçado (mesmo formato que você aprovou visualmente) com as curvas
+1-7 bem mais fechadas — validei que agora 10 ou 11 das 11 curvas exigem
+freada real, para as três categorias, mantendo o traçado sem
+auto-cruzamento. Mostrei a você antes de tocar em qualquer código da
+Unity de novo (pra não repetir o erro de implementar sem confirmar
+primeiro).
+
+**Sua decisão**: pausar a Pista 2 por agora e priorizar a física de
+derrapagem geral (pendência já conhecida, item de física de
+transferência de peso/traseira) antes de continuar com pista nova. Faz
+sentido — se a física de aderência tem um comportamento estranho, faz
+mais sentido resolver isso primeiro do que continuar construindo pista em
+cima dela.
+
+Perguntei se a derrapada também acontece na pista original (oval) ou só
+na Pista 2 — ainda sem resposta, você pediu pra parar por hoje.
+
+### Estado ao final desta rodada
+
+- Pista 2: PAUSADA. O código do greybox v1 (rejeitado) continua no
+  computador, não commitado. O desenho da v2 (curvas mais fechadas) está
+  validado em Python mas NÃO implementado em C#.
+- Física de derrapagem: vira a prioridade da próxima rodada. Próximo
+  passo definido: ler `KartDynamicsMath.cs`/`KartDynamics.cs` (ângulo de
+  deslizamento, transferência de peso, perda/recuperação de aderência) e
+  confirmar com você se a derrapada acontece também no oval antes de
+  mexer em qualquer número de tuning.
+- Nada foi commitado nesta rodada.
+
+## Rodada 35 (2026-08-25) — Pista 2 v4: traçado extraído da foto real, implementado, aguardando seu teste
+
+Depois da Pista 2 v1 ser reprovada ("só reta", derrapagem) e a v2 (mesmo
+formato, curvas mais fechadas) e a v3 (formato inspirado nas suas
+referências, mas ainda inventado por mim) também não servirem — você disse
+claramente "era pra fazer igual eu te mandei" — mudei de método: em vez de
+desenhar um traçado "inspirado", extraí o traçado literalmente da foto real
+que você mandou (Circuito Março, Carrera Kart) usando processamento de
+imagem (identifiquei os pixels da linha vermelha, afinei até um traço de 1
+pixel, segui esse traço do início ao fim, converti pra metros). Mandei uma
+imagem de conferência (o traçado extraído por cima da foto original) e você
+aprovou o formato.
+
+Você também pediu pra largada ficar "na 15 e 14 por ali" — entre duas das
+curvas detectadas, onde dá pra ver tanto o lado técnico (esses/hairpin)
+quanto o laço externo mais aberto. Corrigi minha primeira tentativa (que
+tinha ficado no lugar errado por engano meu) e posicionei a largada logo
+depois da curva 15, no trecho mais reto de verdade daquela região (quase 89
+metros livres até a próxima curva fechada) — você aprovou essa versão final.
+
+**Dados do traçado v4 (aprovado e agora implementado):**
+- ~941 metros de volta.
+- 16 curvas oficiais (consolidadas a partir de 33 variações de curvatura
+  brutas extraídas da foto, agrupando pontos muito próximos).
+- Largura variável: 8,5m na reta da largada, 6m no bolsão técnico (esses +
+  a área do hairpin), 7m no resto — parecido com a largura real que dá pra
+  ver na foto.
+- Geometria validada (mesmo método de sempre): 0 auto-cruzamentos nas
+  bordas do asfalto E nas duas barreiras, folga mínima real de ~13,8m entre
+  trechos não-vizinhos.
+- Física por categoria (verificada com os números reais de tuning do jogo):
+  das 16 curvas oficiais, School exige frear em 13, Rental em 14, Sport+ em
+  14 — bem mais rico e tecnico que a v1 (2 de 11).
+
+**O que foi IMPLEMENTADO nesta rodada:**
+- `KartPhysicsPrototypeBootstrap.cs`: as 5 listas de dados da Pista 2
+  (linha central, classificação de trecho reto/curva, largura variável,
+  barreira externa, barreira interna) foram TROCADAS pelas novas 385
+  posições extraídas da v4 (o método `CreateCourseTechnicalCircuit2` e os
+  métodos auxiliares que já existiam da rodada 34 não precisaram mudar,
+  só os dados). Caixa de delimitação do chão recalculada pro novo formato.
+  `timing.Configure` atualizado de 11 para 16 curvas. Linha de largada/
+  chegada reposicionada.
+- 17 checkpoints (largada/chegada + 16 curvas, `CP0` a `CP15`), cada um
+  rotacionado pra direção real da pista naquele ponto — substituindo os 12
+  checkpoints da v1.
+- Novo `TechnicalCircuit2Configuration.asset`: 10 vagas de grid (calculadas
+  atrás da nova linha de largada, na reta), 17 checkpoints, traçado
+  completo pros bots (mesmos 385 pontos), `timingSectorCount: 16`.
+
+**O que NÃO foi feito (pendências conhecidas, não escondidas):**
+- Decoração (guias zebra, marshal, cerca, prédio de pit).
+- Tela de seleção de pista de verdade (continua sendo só a chave
+  `UseTechnicalCircuit2` no código).
+- Áreas de escape específicas nas curvas mais fechadas.
+- Ajuste fino do grid (a posição de cada uma das 10 vagas foi calculada
+  matematicamente atrás da linha de largada, mas nunca vista rodando —
+  pode precisar de ajuste depois do teste real).
+
+**Ponto crítico, igual às rodadas anteriores: eu não consigo compilar isso
+daqui.** A ponte com o seu computador roda numa máquina Linux separada, sem
+acesso ao Unity real do seu Mac. Revisei o código manualmente com cuidado
+(chaves/parênteses/colchetes do arquivo inteiro conferidos: 245/245, 2259/
+2259, 96/96; os 5 arrays de dados com exatamente 385 elementos cada,
+conferido programaticamente; os 17 checkpoints com índices sequenciais 0-15
+conferidos), mas só você rodando no seu terminal confirma se compila:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Se der erro de compilação, me manda a mensagem de `rkw_build.log` (ou
+`rkw_tests.log`) que eu corrijo na hora. Se compilar e instalar, você já
+vai estar dirigindo a Pista 2 v4 na primeira abertura do app (ela continua
+sendo a pista padrão deste build, via a chave `UseTechnicalCircuit2`).
+
+Nada foi commitado nesta rodada.
+
+## Rodada 36 (2026-08-25) — Correções pós-teste da Pista 2 v4 (Carrera Kart)
+
+Depois do seu teste real da Pista 2 v4 ("perfeito projeto inicial aprovado, mas
+tem observações"), investiguei e corrigi os dois problemas concretos que você
+relatou. Os outros itens (derrapagem estranha, zebra ideal, tela de seleção
+de pista de verdade) ainda estão em investigação/planejamento — não foram
+mexidos ainda, ver "Pendências" abaixo.
+
+**1) Carrinho e bots nascendo de cara para o muro — CORRIGIDO (causa raiz
+encontrada).**
+
+O jogo usa DUAS convenções diferentes de ângulo (`yaw`) no mesmo arquivo de
+código, para coisas diferentes:
+- Uma pras peças da pista (paredes, checkpoints, faixas de asfalto).
+- Outra, sempre 90° diferente da primeira, só pros carrinhos (jogador e
+  bots) nas vagas de largada.
+
+Isso já existia antes, funcionando certinho nas pistas antigas (o Oval, por
+exemplo — toda vaga de grid dele tem `yawDegrees: 90`, que é o valor certo
+pra apontar pro sentido da reta principal). O problema é que, quando eu
+calculei as 10 vagas de grid da Pista 2 nova, usei sem perceber a fórmula
+das PEÇAS DA PISTA em vez da fórmula dos CARRINHOS — errei o ângulo em
+exatos 90° pra cada uma das 10 vagas. Por isso o carrinho (e os bots, que
+usam a mesma lista de vagas) nasciam virados de lado, "de cara pro muro",
+mesmo com a posição certa.
+
+Corrigido: recalculei o ângulo certo (fórmula dos carrinhos) pras 10 vagas,
+direto no arquivo `TechnicalCircuit2Configuration.asset`. Só o ângulo mudou
+— as posições das vagas continuam as mesmas de antes.
+
+**2) Linha de largada/chegada na transversal — CORRIGIDO (mesma causa,
+problema diferente).**
+
+A linha branca da largada estava sendo desenhada com a peça "antiga" do
+jogo, que só sabe desenhar retângulos alinhados com o mapa (eixo X/Z do
+mundo) — funcionava bem no Oval e na Pista 2 v1 porque a reta de largada
+deles ficava, por acaso, alinhada com esses eixos. Na Pista 2 nova
+(extraída da foto real), a reta de largada fica num ângulo qualquer no
+mundo — então aquele retângulo "reto" ficava visivelmente torto em relação
+à pista.
+
+Corrigido: troquei pra peça "orientável" que o jogo já usa pros checkpoints
+e pras paredes — agora a linha gira junto com o ângulo real da pista naquele
+ponto (mesmo ângulo já usado no checkpoint de largada, que esse sim já
+estava certo).
+
+**3) Nomes dos circuitos — FEITO.**
+
+- Pista antiga (oval): renomeada de "Oval MVP (Clockwise)" para
+  **"Circuito Oval"**.
+- Pista nova (a extraída da foto real): renomeada para **"Carrera Kart"**.
+
+Hoje esse nome só aparece num log técnico interno (não existe tela de
+seleção de pista de verdade ainda — ver pendência abaixo), mas já fica
+correto pra quando essa tela existir.
+
+**O que AINDA não foi mexido (aguardando sua confirmação antes de
+implementar, ver pergunta que te mandei):**
+- Derrapagem estranha em vários pontos da Pista 2 (comparado ao Oval, que
+  roda liso) — ainda não investigado a fundo; pode ter relação com a tarefa
+  já pendente de melhorar a física de derrapagem (transferência de peso +
+  traseira).
+- "Zebra ideal" grudada nas curvas como ponto de passagem real, em vej de
+  "bloco grande e travado" — te mandei uma pergunta pra confirmar o que
+  você quer, porque hoje a zebra do próprio Oval já é só um bloco quadrado
+  fixo (4x4m) em cada ápice, não acompanha a curva — pode ser isso que você
+  quer trocar, em vez de eu simplesmente copiar o comportamento atual do
+  Oval pra Pista 2.
+- Tela de seleção de pista de verdade (hoje ainda é só a chave
+  `UseTechnicalCircuit2` no código) — também te mandei uma pergunta sobre o
+  tamanho dessa mudança antes de começar.
+
+**Igual sempre: eu não consigo compilar isso daqui.** Revisei o arquivo de
+código inteiro depois da mudança (chaves/parênteses/colchetes ainda
+batendo). Pra confirmar que compila e testar de verdade, roda no seu
+terminal:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Nada foi commitado nesta rodada.
+
+## Rodada 36 (continuação) — zebra contínua nas curvas + tela de seleção de pista
+
+Depois de perguntar e você confirmar as duas coisas que ficaram em aberto na
+parte 1 desta rodada, implementei as duas.
+
+**1) Zebra "grudada" nas curvas — FEITO, nas duas pistas.**
+
+Troquei o bloco quadrado fixo (4x4m, um por ápice) por uma faixa xadrez
+contínua que acompanha a curva de verdade, igual zebra de pista real:
+
+- **Circuito Oval**: a faixa acompanha as duas curvas (leste e oeste) na
+  borda de dentro (lado do infield) inteiras, do começo ao fim de cada
+  curva — reaproveitei a mesma fórmula que já gera o asfalto e as
+  barreiras dessa pista, só com um raio um pouco menor, então fica
+  garantidamente colada e concêntrica, sem cálculo novo arriscado.
+- **Carrera Kart**: calculei, ponto a ponto, o quanto cada trecho da pista
+  está curvando (raio da curva local) e marquei como "zona de zebra" só os
+  trechos realmente fechados (raio menor que 20m) — suavizei esse cálculo
+  pra não fragmentar em pedacinhos por causa de ruído da extração da foto.
+  Resultado: exatamente 16 faixas contínuas separadas, uma por curva
+  oficial — o que reforça que a suavização encontrou as curvas de verdade,
+  não ruído. Cada faixa fica do lado de dentro da curva (o lado certo,
+  calculado automaticamente pra cada curva, já que a pista tem curvas pros
+  dois lados).
+
+Não-sólida (mesmo motivo de sempre: o carrinho não tem suspensão/roda de
+verdade pra "subir" numa zebra alta, então ela é só visual/não bloqueia).
+
+**2) Tela de seleção de pista — FEITO, mas é a mudança maior desta
+rodada, com um risco que quero deixar bem claro.**
+
+Antes, a pista era decidida no momento de compilar o jogo (uma
+chave escondida no código, só eu conseguia mudar). Agora existe uma
+telinha de verdade: assim que o jogo abre, aparece "ESCOLHA A PISTA" com
+dois botões — "CIRCUITO OVAL" e "CARRERA KART" — e só depois de você
+tocar em um deles é que a pista, o carrinho, a câmera etc. são criados.
+
+**O risco que preciso ser transparente sobre**: pra isso funcionar, tive
+que reorganizar a ORDEM em que o jogo monta as coisas ao abrir — antes,
+tudo (pista, carrinho, câmera, cronometragem) era criado imediatamente ao
+abrir o app, numa função só. Agora, essa função foi dividida em duas: uma
+mostra só a tela de escolha, e só quando você toca num botão é que a
+segunda parte (que é exatamente o que já existia antes, só que adiada)
+roda. É uma mudança estrutural, não só cosmética — por isso é a que mais
+me preocupa das mudanças de hoje, mesmo eu tendo revisado com cuidado.
+
+Também encontrei e corrigi de cara um efeito colateral real: existe um
+teste automatizado do jogo (`KartPhysicsPrototypeTests.cs`) que verificava
+o carrinho logo após o jogo abrir — ele ia falhar com essa mudança, porque
+agora o carrinho só existe depois do toque na tela nova. Ajustei esse
+teste pra "simular" o toque automaticamente antes de conferir o carrinho
+(precisei também liberar acesso interno do código pro teste conseguir
+fazer isso — outra mudança pequena, em `AssemblyInfo.cs`, seguindo o mesmo
+padrão que os outros módulos do jogo já usavam).
+
+A tela em si é bem simples de propósito (sem imagem/preview ainda, só os
+dois nomes e uma linha descrevendo cada um) — deixa fácil de deixar
+bonita depois, sem mexer de novo na parte arriscada (a reorganização).
+
+**Nada disso eu consegui testar rodando de verdade — mais importante ainda
+nesta rodada que nas anteriores**, porque mudei a ordem de inicialização
+do jogo, não só dados de uma pista. Pedi bastante cuidado a mim mesmo na
+revisão (chaves/parênteses/colchetes do arquivo inteiro conferidos de
+novo depois de cada mudança), mas essa é o tipo de mudança que só um teste
+real no seu Android confirma 100%:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Se der erro de compilação ou de teste automatizado (`rkw_tests.log`), me
+manda a mensagem que eu corrijo. Se abrir e a tela "ESCOLHA A PISTA"
+aparecer, escolher uma pista, e o jogo continuar normal dali — essa parte
+funcionou. Se travar em algum ponto entre o toque no botão e o carrinho
+aparecer, é sinal de algo na reorganização que não vi por revisão manual.
+
+Nada foi commitado nesta rodada.
+
+## Rodada 37 (2026-08-25) — segundo lote de correções pós-teste
+
+Você testou de novo e mandou um lote grande de observações. Nesta rodada
+investiguei e corrigi as que tinham causa técnica clara; duas ficaram como
+limitação conhecida, explicadas abaixo.
+
+**1) Zebra "piscando" / vermelho e branco se sobrepondo — CORRIGIDO.**
+
+Causa raiz: pra evitar buraco nas curvas, o código "estica" cada pedaço da
+pista/parede um pouco além do tamanho exato, pra um pedaço cobrir a
+emenda com o vizinho — invisível quando o pedaço é todo da mesma cor
+(asfalto, parede). Mas a zebra alterna vermelho/branco a cada pedaço, e
+esse "esticado" fazia dois pedaços de cor diferente ocuparem o mesmo
+espaço na emenda — exatamente o "piscando"/"sobrepondo" que você viu.
+Corrigido: tirei o esticamento só da zebra (nas duas pistas). Efeito
+colateral honesto: agora pode aparecer uma frestinha mínima (poucos
+centímetros) na emenda de cada pedacinho da zebra em vez do
+"sobrepondo" — troca que vale a pena, já que frestinha é bem menos visível
+que as duas cores brigando.
+
+**2) Kart derrapando sozinho, quase toda hora na Carrera Kart — CAUSA RAIZ
+ENCONTRADA E CORRIGIDA.**
+
+Essa era a mais séria. O traçado da Carrera Kart foi extraído de uma foto
+real, então mesmo os trechos classificados como "reta" têm uma
+curvatura mínima real (ruído da extração) — nada visível a olho nu, mas
+o código só "estica" os pedaços classificados como curva, achando que
+"reta" significa reta matemática perfeita (que é verdade no Circuito
+Oval, mas não na Carrera Kart). Resultado: nos pontos onde dois pedaços
+"retos" se encontram com esse pequeno ângulo residual, ficava um buraco
+de verdade no chão da pista — cheguei a medir um caso de quase meio metro
+de buraco na borda do asfalto. O carrinho passando por cima de um buraco
+desses dá exatamente aquele "derrapão do nada". Corrigido: agora todo
+pedaço da pista/muro da Carrera Kart estica igual, reta ou curva — mesma
+lógica seguríssima que a pista/muro do Circuito Oval já usava nas curvas.
+Efeito colateral bom: isso também deve ter resolvido (ou pelo menos
+melhorado bastante) a rugosidade entre pista e grama que você viu.
+
+**3) Ranhura entre pista e grama nas duas pistas — melhorado.**
+
+Além do item 2 acima (que ajuda bastante na Carrera Kart), a grama
+sentava um pouco mais baixo que o asfalto nas duas pistas (uma
+"escadinha" de ~1,5cm no limite entre os dois) — subi a grama pra ficar
+bem mais rente ao nível do asfalto, nas duas pistas.
+
+**4) Falta desenho do grid de largada — CORRIGIDO nas duas pistas.**
+
+Cada uma das 10 vagas agora tem um retângulo amarelo pintado no chão,
+igual pista de kart de verdade, mostrando exatamente onde alinhar.
+
+**5) Modo SOZINHO sempre na pole — CORRIGIDO.**
+
+Sem bots, o carrinho sempre nasce na vaga 1 (pole). Com bots, continua
+sendo sorteio igual antes (pra ninguém ser sempre o primeiro).
+
+**6) Botões de categoria de kart "invertidos" — CORRIGIDO.**
+
+Não era exatamente inversão de dado — o botão sempre mostrava o nome do
+OUTRO kart (pro qual você ia trocar), então quando você estava dirigindo
+o rápido, o botão mostrava o texto do lento, parecendo errado. Agora ele
+mostra o kart que você está dirigindo NA HORA, com "(toque para trocar)"
+do lado pra deixar claro que é um botão de troca.
+
+**7) Velocímetro em cima do botão de câmera / "grip" sem explicação —
+CORRIGIDO.**
+
+Movi o velocímetro pro topo-centro da tela (não tinha nada lá) e aumentei
+bem o tamanho da fonte (quase dobrou). Tirei o "grip X.XX" do visor: é um
+número interno de física (o quanto de aderência lateral sobra no momento,
+cai numa derrapada e volta depois) sem um significado direto pro
+jogador — por isso você não reconheceu o que era; não é um dado que faça
+sentido mostrar pra quem tá jogando, então tirei da tela (o número
+continua existindo por dentro do jogo, só não aparece mais).
+
+**Não mexido, ficou como limitação/pergunta em aberto:**
+
+- **"Não sei se andar na grama pede velocidade"** — resposta honesta: no
+  Circuito Oval, SIM, já existe perda de aderência dirigindo na grama do
+  miolo (um recurso que já existia). Na Carrera Kart, ainda NÃO — nunca foi
+  implementado lá. Fazer certo pra essa pista exigiria desenhar a área de
+  grama seguindo o contorno real da pista (parecido com o trabalho que fiz
+  pro próprio asfalto), o que é um trabalho de verdade, não um ajuste
+  rápido — prefiro fazer isso com cuidado numa rodada própria a arriscar
+  algo malfeito agora, já que essa rodada já mudou bastante coisa.
+- **Zebra ainda em blocos retangulares, não perfeitamente redonda** — isso
+  é uma limitação de como a pista inteira é construída (cada pedaço é
+  literalmente uma caixa reta; nenhuma parte da pista é uma curva "de
+  verdade", nem o próprio asfalto). Corrigi o pior sintoma (o
+  piscar/sobrepor), mas deixar visualmente redondo de verdade precisaria
+  trocar a técnica de construção da zebra (ou aumentar bastante a
+  quantidade de pedacinhos) — posso investigar isso se for importante pra
+  você, mas não é um ajuste de uma linha.
+
+**Nada disso eu testei rodando de verdade.** Essa rodada mexeu em bem mais
+arquivos que o normal (5 arquivos de código). Comando de sempre:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Nada foi commitado.
+
+## Rodada 38 (2026-08-25) — velocímetro, fantasma por categoria, grid redesenhado, investigação do "sozinho"
+
+Você mandou mais um lote depois do último teste. Esta rodada tem 3 correções
+fechadas, 1 correção que preciso que você ajude a confirmar (adicionei
+"espiões" no código para isso), e 1 item que continua em aberto como
+limitação conhecida.
+
+**1) Velocímetro em cima do botão "REINICIAR" — CORRIGIDO.**
+
+A correção da rodada passada moveu o velocímetro pro topo-centro da tela,
+mas esqueci de conferir que o botão "REINICIAR" já morava exatamente ali
+(também centralizado, no topo). Resultado: um por cima do outro. Como você
+pediu, mantive o velocímetro centralizado e só desci ele um pouco, pra ficar
+abaixo do botão de reiniciar em vez de por cima.
+
+**2) Fantasma sempre com o carrinho de 60 km/h — CORRIGIDO.**
+
+Causa raiz: os DADOS do fantasma (a volta gravada) já eram separados
+corretamente por categoria de kart desde uma rodada anterior — o fantasma do
+kart de 80 já tocava a volta certa. O problema era só visual: o código que
+desenha o carrinho fantasma na pista sempre usava o modelo 3D do kart de 60,
+não importa qual kart você estivesse pilotando. Agora ele sempre desenha o
+fantasma com o mesmo modelo do kart que você está usando naquela corrida.
+
+**3) Marcação do grid de largada "grosseira" — REDESENHADA.**
+
+Troquei o bloco amarelo sólido por 3 linhas brancas finas (esquerda, direita
+e frente), formando um retângulo aberto atrás — igual pista de kart de
+verdade, onde o carrinho entra por trás na vaga. De brinde, encontrei e
+corrigi um bug real que o bloco antigo tinha escondido: ele estava desenhado
+90 graus girado em relação ao carrinho (o lado comprido ficava atravessado
+em vez de alinhado com a direção que o kart aponta) — um efeito colateral
+de duas "linguagens" de ângulo diferentes que já existiam no código (uma
+pros pedaços de pista, outra pros karts) terem sido misturadas sem querer.
+As 3 linhas novas já nascem alinhadas certas com o carrinho.
+
+**4) Modo SOZINHO ainda largando fora da pole — INVESTIGADO A FUNDO,
+CORREÇÃO ANTERIOR NÃO ENCONTROU BUG NOVO, PRECISO DA SUA AJUDA PRA
+CONFIRMAR.**
+
+Preciso ser honesto: reli com cuidado, de novo, cada trecho de código que
+poderia interferir nisso — o bloco que reposiciona o carrinho pra pole
+position, o menu que decide "sozinho vs com bots", o sistema que resgata o
+carrinho quando ele fica preso ou capota (podia ser candidato, já que o
+carrinho fica parado bastante tempo esperando você configurar a corrida —
+mas confirmei que esse sistema só liga DEPOIS que a corrida realmente
+começa, não antes), o sistema de bots, e a contagem regressiva "3-2-1-VAI".
+Não encontrei nenhum erro de lógica dessa vez também.
+
+Como não consegui achar o bug só lendo o código, fiz o seguinte: adicionei
+duas linhas de registro (log) no jogo — uma no momento em que o modo
+sozinho reposiciona o carrinho pra pole, e outra no momento exato em que a
+corrida libera o carrinho pra andar (fim do "3-2-1"). Elas mostram, nos
+dois momentos, a posição real do carrinho. Se as duas posições baterem e
+ainda assim o carrinho aparecer fora da pole pra você, o problema é outra
+coisa (por exemplo, o app não ter sido reinstalado/atualizado de verdade
+depois da correção da rodada passada, ou o desenho do "01" no chão estar
+confundindo qual vaga é a pole visualmente). Se as posições forem
+diferentes, aí sim vou saber exatamente onde procurar a seguir.
+
+**O que eu preciso de você**: depois de rodar `bash scripts/build_deploy_verify.sh`,
+testar o modo SOZINHO uma vez, e me mandar o arquivo `rkw_logcat.txt` que o
+próprio script já gera — vou procurar nele as linhas que começam com
+"KartPhysicsPrototypeBootstrap: OnRaceSetupConfirmed", "solo-mode pole
+reposition applied" e "RaceStartController: input released".
+
+**Não mexido, ficou como limitação em aberto:**
+
+- **Derrapada residual na Carrera Kart / "saltinhos" perto da zebra** — você
+  confirmou que melhorou bastante depois da rodada passada, mas ainda não
+  está 100% regular em algumas retas. Não investiguei mais fundo esse
+  resíduo nesta rodada (priorizei os itens novos que você trouxe) — seguo
+  disponível pra investigar isso com mais profundidade numa próxima rodada,
+  se preferir.
+
+**Nada disso eu testei rodando de verdade.** Comando de sempre:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Nada foi commitado.
+
+## Rodada 38 (continuação) — velocímetro de vez, zebra da largada removida, vibração na zebra
+
+Você testou de novo e mandou mais um retorno rápido. Duas correções
+fechadas, uma funcionalidade nova implementada, e a investigação do modo
+sozinho continua em aberto (com uma pergunta direta pra você no final).
+
+**1) Velocímetro ainda desalinhado do "REINICIAR" — agora corrigido de
+verdade.**
+
+Encontrei dois problemas, não só um:
+
+- O velocímetro usava uma fórmula de centralização diferente da que o
+  "REINICIAR" usa (uma baseada na "área segura" da tela, outra baseada na
+  largura total da tela) — em alguns celulares essas duas contas dão
+  resultados ligeiramente diferentes, por isso "não fica centralizado com
+  o reiniciar". Troquei o velocímetro pra usar a MESMA conta que o
+  "REINICIAR" já usa.
+- A "outra informação" que colidia era o texto "META: N VOLTAS • BOTS: X"
+  (que fica sempre visível durante a corrida) e o aviso temporário que
+  aparece cada vez que você completa uma volta — os dois moram bem
+  naquela mesma faixa central do topo da tela, e eu não tinha notado da
+  primeira vez. Desci o velocímetro pra baixo dos três (reiniciar, meta,
+  aviso de volta), todos alinhados no mesmo centro agora.
+
+**2) Zebra bem na largada — removida.**
+
+Encontrei o trecho exato: as últimas curvas antes da linha de chegada têm
+uma zebra que passa a menos de 10-13 metros da própria linha de largada —
+exatamente o pedaço que você via ali. Removi só esse trecho específico (um
+"pedaço" completo e isolado de zebra, sem deixar sobra pela metade); as
+outras 15 curvas com zebra na Carrera Kart e as duas do Circuito Oval
+continuam normais.
+
+**3) Vibração na zebra — implementado (novidade, não corrige a
+derrapada).**
+
+Como você pediu, ela não tira velocidade nem trava o carrinho — é só uma
+sensação: enquanto o carrinho estiver tocando (visualmente) uma zebra, o
+celular vibra em pulsos curtos repetidos, simulando o "solavanco" de
+passar por cima de uma zebra de verdade. Só o SEU carrinho vibra o celular
+(os bots não "sentem" nada, já que não seguram um telefone). Como o Unity
+não tem um jeito nativo de fazer "vibração contínua" (só pulsos únicos),
+simulei repetindo o pulso a cada instante enquanto você estiver na zebra —
+deve parecer um zumbido contínuo, mas se sentir mais "picotado" do que o
+ideal, me avisa que dá pra ajustar o ritmo.
+
+**4) Modo sozinho ainda fora da pole — sem novidade de código, mas com uma
+pista importante nova.**
+
+Você relatou largar em 4º e depois em 8º — ou seja, não é "quase certo,
+com uma falha ocasional", é comportamento essencialmente aleatório, igual
+o jogo se comportava ANTES da correção da rodada 37 existir. Isso me deixa
+bem mais inclinado a pensar que o build que você testou pode não ter essa
+correção dentro dele ainda (por exemplo, se o `bash
+scripts/build_deploy_verify.sh` não reinstalou o app de verdade, ou se
+rodou numa cópia antiga por engano) — e não um bug de lógica que eu ainda
+não vi, já que reli esse trecho de código três vezes agora sem achar erro.
+
+**Preciso mesmo do `rkw_logcat.txt`** (gerado automaticamente pelo próprio
+`build_deploy_verify.sh` depois de rodar) da PRÓXIMA vez que você testar o
+modo sozinho — com os registros que adicionei na rodada passada, esse
+arquivo vai mostrar exatamente se a correção está rodando ou não. Sem ele
+eu ficaria só especulando.
+
+**Ainda não mexido — quero sua confirmação antes de começar (mudança
+grande):** "focaria nos detalhes da pista, deixar ela mais plana" /
+derrapada perto da zebra "não está redondo". Essa é a mesma causa raiz já
+documentada como limitação: a pista inteira é construída com muitos
+pedacinhos retos (não curvas de verdade), e mesmo depois da correção da
+rodada 37 (que fechou os buracos entre pedaços), ainda sobra um pequeno
+"degrau de ângulo" em cada emenda — mais concentrado exatamente nas curvas
+fechadas, que é onde a zebra também fica, por isso a sensação de derrapada
+parece "grudada" na zebra. Uma correção de verdade exigiria reconstruir
+esse trecho da pista com pedaços bem menores (mais suave) ou trocar a
+técnica de construção inteira — um trabalho do tamanho da extração original
+da pista, não um ajuste pequeno, e eu não consigo testar rodando de
+verdade. Quer que eu entre nisso como o próximo passo grande, ou prefere
+que eu continue com ajustes menores primeiro?
+
+Nada foi commitado. Mesmo comando de sempre pra testar:
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+## Rodada 39 (2026-08-25) — Carrera Kart: pista mais suave (só nessa pista, por pedido seu)
+
+Você confirmou: investir tempo só na Carrera Kart (a Oval você disse que é
+exagerado o problema lá, então não mexi nela). Este foi o trabalho grande
+que expliquei antes de começar — aqui está o que fiz, como verifiquei, e o
+que ainda depende do seu teste real.
+
+**O problema de novo, em números.** Medi (script à parte, fora do jogo) o
+"ângulo de quina" em cada um dos 385 pontos que formam a Carrera Kart: em
+média 4,56 graus de quina a cada ponto, com um pico de até 18,6 graus num
+ponto só. Isso é bem mais alto do que eu tinha percebido nas rodadas
+anteriores (eu só tinha medido antes os pontos classificados como "reta",
+não todos) — confirma que praticamente a pista inteira, não só alguns
+pontos isolados, tem esse "degrau" de ângulo entre pedaços.
+
+**O que eu tentei primeiro (e descartei): só "amaciar" os pontos que já
+existem.** Testei mover cada ponto um pouco na direção da média dos
+vizinhos (a técnica mais simples de suavização). Resultado: mesmo forçando
+bastante, o pico só caiu de 18,6° para ~13°, e a média mal se moveu (de
+4,56° pra ~4,1°) — pouco efeito. Faz sentido: numa curva de verdade,
+sempre vai ter uma quantidade mínima de "giro" que precisa acontecer em
+algum lugar; só reposicionar os MESMOS 385 pontos não resolve, porque o
+giro que a curva PRECISA fazer continua sendo dividido entre os mesmos 385
+pedaços.
+
+**O que funcionou: dobrar a quantidade de pontos, com uma curva de verdade
+passando por eles.** Em vez de mover os pontos originais, mantive todos os
+385 exatamente onde estavam e inseri um ponto novo entre cada par,
+calculado com uma curva suave (o método se chama Catmull-Rom, usado
+bastante em jogos pra isso) — não é uma linha reta no meio, é uma curva que
+já leva em conta a forma da pista ali. Resultado: **385 pontos viraram
+770**, e o mesmo giro que antes acontecia todo de uma vez agora fica
+dividido em duas partes mais suaves.
+
+**Resultado medido (antes → depois):**
+- Ângulo de quina médio: 4,56° → 2,37° (quase pela metade)
+- Ângulo de quina no pior ponto: 18,6° → 10,4°
+- Comprimento total da pista: praticamente igual (940,79m → 941,00m, 21cm
+  de diferença em quase 1km)
+
+**Por que o comprimento quase não mudar importa pra você:** o jogo usa o
+comprimento da pista (arredondado pro metro mais próximo) pra saber se é
+"a mesma pista" quando compara sua volta com o fantasma/melhores tempos.
+940,79 já arredondava pra 941; 941,00 também arredonda pra 941 — **seus
+recordes e fantasma da Carrera Kart continuam válidos, não vão resetar.**
+
+**Por que eu não toquei no grid de largada nem nos 17 checkpoints:** os
+385 pontos originais continuam EXATAMENTE onde estavam (só adicionei
+pontos NOVOS entre eles, não movi nenhum). Como o grid de largada e todos
+os checkpoints foram posicionados exatamente EM CIMA de pontos originais
+específicos (conferi um por um, distância zero), eles continuam
+perfeitamente alinhados — nada precisou mudar ali.
+
+**O que NÃO ficou perfeito, sendo honesto:**
+
+1. **Ainda vai ter algum "degrau" residual.** Reduzi a quina pela metade,
+   não zerei — curvas de verdade sempre exigem algum giro, e por mais que
+   eu aumente a quantidade de pontos, sempre vai sobrar uma quantidade
+   mínima concentrada nos trechos mais fechados. A expectativa realista é
+   "bem melhor", não "perfeitamente redondo".
+2. **A zebra (faixa vermelha/branca) não foi reposicionada junto.** Ela é
+   uma faixa separada, calculada com sua própria lógica — não mexi nela
+   nesta rodada pra não aumentar ainda mais o tamanho da mudança. Como ela
+   é só visual (não bloqueia o carrinho), o pior que pode acontecer é ela
+   ficar a alguns centímetros fora do lugar exato em relação ao asfalto
+   mais suave, nos trechos de curva mais fechada. Se você notar isso e
+   incomodar, é rápido de ajustar numa rodada separada.
+3. **Dobrei a quantidade de "pedacinhos" da pista e das paredes** (de
+   1.155 pra 2.310 blocos, contando asfalto + as duas paredes). Isso deixa
+   a pista mais pesada de processar — não tenho como medir o impacto real
+   no FPS do seu celular daqui, então vale ficar de olho se notar queda de
+   quadros especificamente na Carrera Kart depois desta mudança (o próprio
+   `build_deploy_verify.sh` já tira uma métrica de performance, confira
+   `rkw_screenshot.png`/os logs se quiser comparar).
+
+**Não testei rodando de verdade — mais importante ainda nesta rodada, já
+que reescrevi as 5 listas de dados principais da pista (as mesmas
+verificadas com cuidado nas rodadas anteriores) mais duas listas dentro do
+arquivo da pista (`TechnicalCircuit2Configuration.asset`, os pontos que
+os bots seguem e os que o sistema de resgate usa). Conferi tudo que
+consegui sem rodar: contagem de pontos batendo em todo lugar (770 nas 5
+listas do código, 771 nas 2 listas do arquivo da pista — a diferença de 1
+é só porque o arquivo da pista repete o primeiro ponto no final pra fechar
+o laço), chaves/parênteses/colchetes do arquivo inteiro conferidos, e a
+matemática de cada mudança testada separadamente antes de aplicar. Mas
+isso é bastante coisa nova de uma vez, então o de sempre vale mais que
+nunca:**
+
+```
+bash scripts/build_deploy_verify.sh
+```
+
+Se der erro de compilação, me manda `rkw_build.log`. Se compilar e rodar,
+o que eu mais quero saber é simples: a Carrera Kart ficou mais lisa pra
+dirigir, principalmente perto das curvas? E o FPS continua bom?
+
+Nada foi commitado.
+
+## Rodada 39 (continuação, 2026-08-25) — REVERTIDO: a suavização piorou colisão e quebrou a volta completa
+
+Você testou a Carrera Kart suavizada (rodada 39 acima) e relatou dois
+problemas sérios: os pontos de colisão pioraram, e a volta não estava
+completando mesmo quando você fazia ela inteira. O velocímetro e o grid
+("GM") você confirmou que ficaram certos e organizados, e sentiu a
+vibração da zebra funcionando — essas três coisas continuam boas.
+
+**Investiguei antes de mexer em qualquer coisa.** Reli a matemática ponto
+por ponto (não só a média/pico geral, que eu já tinha checado antes de
+entregar) — a técnica da curva suave em si não criou nenhum ponto pior do
+que os que a pista real já tinha: o pior "cotovelo" novo criado por ela
+foi 8,9 graus, menor que vários pontos que já existiam antes (até 18,6
+graus no pior caso original). Ou seja, a ideia da curva suave não era o
+problema.
+
+**O que encontrei de concreto:** ao inserir um ponto novo entre cada par
+de pontos antigos, os trechos que JÁ eram os mais curtos da pista original
+(mínimo de 0,82m) viraram 14 pedaços novos de até 0,41m — bem curtos,
+vários em sequência. Pedaços de "parede física" muito curtos e muito
+próximos um do outro são um problema conhecido em motor de física de
+jogos: o carrinho, andando rápido, pode "morder" essas emendas em sequência
+muito rápida e sofrer travadinhas/saltos — bate exatamente com "pioraram
+os pontos de colisão".
+
+**Sobre a volta não completar — hipótese mais provável, ainda não 100%
+confirmada:** o sistema que conta a volta só marca como válida se você
+passar pelos checkpoints na ordem certa; se o carrinho travou/pulou perto
+de um checkpoint por causa do problema de colisão acima, o sistema pode ter
+interpretado como checkpoint perdido ou fora de ordem e invalidado a volta
+mesmo com o percurso completo visualmente. Não consigo confirmar 100% sem
+rodar o jogo aqui, mas os dois problemas aparecendo juntos, na mesma pista,
+na mesma rodada, é consistente com essa explicação.
+
+**Ação tomada: revertido para a versão da rodada 38 (já testada e
+aprovada).** As 5 listas de dados da pista no código e as 2 listas dentro
+do arquivo da pista voltaram exatamente aos 385/386 pontos originais — os
+mesmos valores exatos de antes da rodada 39 (recuperados dos dados que eu
+já tinha guardado, não uma nova geração). Todas as correções das rodadas
+37-38 continuam intactas (zebra sem piscada, remoção da zebra perto da
+largada, grid redesenhado, vibração na zebra) — só as 7 listas de pontos
+da Carrera Kart voltaram ao estado anterior.
+
+A pista "mais lisa" não está mais no jogo agora — voltou ao estado que
+você já tinha testado e aprovado (com o "degrau" residual perto da zebra
+que você já conhecia). Uma futura tentativa de suavizar precisaria evitar
+encurtar os trechos que já são curtos — só valeria tentar de novo se você
+quiser, dado o risco que apareceu.
+
+Pedido: rodar `bash scripts/build_deploy_verify.sh` de novo e confirmar
+que a colisão voltou ao normal e que a volta volta a completar.
+
+Nada foi commitado.
+
+## Rodada 39 (continuação 2, 2026-08-25) — causa raiz real da volta não fechar, encontrada e corrigida
+
+Depois do revert acima, você testou de novo e trouxe um dado novo importante:
+a volta não completou, mas também **não apareceu nenhuma mensagem de "volta
+inválida"** — simplesmente não aconteceu nada. Isso mudou minha investigação
+por completo: eu tinha suspeitado antes que fosse um efeito colateral da
+colisão ruim (um checkpoint "perdido" no meio da volta por causa de um
+trombada), mas isso sempre geraria a mensagem de inválida. O fato de não
+aparecer NADA aponta pra outro lugar bem específico do código.
+
+**Causa raiz encontrada (confirmada, não é mais hipótese):** a linha de
+chegada da Carrera Kart tem uma trava de "só conta se você estiver vindo na
+direção certa" (pra não deixar alguém completar a volta andando de ré). Essa
+direção "certa" estava fixa como "sempre pra +X do mapa" — um valor copiado
+do código mais antigo do Circuito Oval, cujo comentário original diz
+literalmente "o protótipo em sentido horário cruza a largada/chegada em
+direção a +X" — isso é verdade pro Oval (a reta de largada dele é alinhada
+com o mapa), mas a Carrera Kart tem a largada num ângulo qualquer (ela foi
+extraída de uma foto real). Calculei a direção real de quem sai da pole na
+Carrera Kart: é bem diferente de "+X", é quase o oposto. Resultado: o jogo
+sempre achava que você estava cruzando a linha "de ré", mesmo indo do jeito
+certo — e por isso nunca registrava nem invalidava a volta, só ignorava
+silenciosamente.
+
+**Corrigido:** a direção correta agora é calculada a partir do próprio
+ângulo da linha de chegada (que já estava certo), em vez de usar aquele
+valor fixo emprestado do Oval. Baixo risco: só mexe nessa checagem de
+direção, não toca em nenhum dado de geometria da pista (não é a mesma área
+que causou o problema de colisão da rodada 39).
+
+**Ainda não resolvido, sendo honesto:** a sensação de colisão ruim ("bate
+forte", "trava muito") continua, mesmo depois do revert — isso significa
+que é um problema mais antigo e mais profundo do que a suavização da rodada
+39 (que só piorou um pouco algo que já existia desde antes). Não investiguei
+essa causa mais funda ainda; é a limitação já conhecida das rodadas
+37-38 ("derrapada perto da zebra/curvas"), só que aparentemente mais forte
+do que eu tinha entendido. Perguntei se ele quer que eu invista tempo nisso
+agora.
+
+**Também relatado, ainda sem explicação:** uma linha amarela aparecendo
+perto da largada, entre as marcações do grid. Não encontrei nenhum material
+amarelo no código da Carrera Kart — o único candidato visual ali é a
+própria linha branca de largada/chegada, que pode estar aparecendo
+amarelada por causa da luz do ambiente (iluminação quente/pôr-do-sol pode
+tingir superfícies brancas). Pedi uma captura de tela pra confirmar, já que
+não consigo ver o jogo rodando daqui.
+
+Nada foi commitado.
+
+## Rodada 39 (continuação 3, 2026-08-25) — investigação funda da colisão ruim: piso da Carrera Kart reconstruído como peça única
+
+Você confirmou que a volta já fecha certinho (viu o fantasma, andou 2 voltas
+conferindo) — ótimo, aquele bug era mesmo o problema. Mas pediu pra eu focar
+100% agora no travamento/pulos que continuam acontecendo, inclusive em
+linha reta (menos que na zebra/curva, mas ainda acontece).
+
+**O que eu descobri investigando mais fundo.** O chão da Carrera Kart hoje
+é feito de 385 "ladrilhos" retangulares separados, um atrás do outro,
+cada um levemente girado pra seguir a curva da pista — isso é assim desde
+que a pista foi criada (rodada 34), não é coisa recente. Reparei em um
+detalhe importante: o carrinho tem a rotação de "capotar pra frente/lado"
+travada de propósito (só pode virar de esquerda pra direita, não pode
+"inclinar" pra frente/trás nem de lado) — ou seja, ele fisicamente NÃO
+CONSEGUE "pular" por estar subindo uma rampa ou capotando. Isso me fez
+suspeitar de outra coisa: quando o jogo simula fisicamente o carrinho
+passando de um ladrilho pro outro, mesmo que os dois ladrilhos estejam
+perfeitamente encaixados (sem buraco, sem degrau), o motor de física às
+vezes "sente" a EMENDA entre eles como se fosse um obstáculo pontual —
+um problema conhecido em jogos de corrida quando o chão é feito de várias
+peças separadas em vez de uma peça só. É basicamente por isso que jogos de
+corrida "de verdade" sempre constroem a pista como uma superfície contínua,
+não como ladrilhos.
+
+**O que eu fiz:** reconstruí o CHÃO FÍSICO (não o visual — o visual
+continua exatamente igual, os mesmos ladrilhos que você já vê) como uma
+faixa única e contínua, sem nenhuma emenda, seguindo o mesmo formato e
+largura da pista de sempre. Os ladrilhos visuais viraram só decoração (não
+sofrem mais contato físico); quem sustenta o carrinho agora é essa faixa
+nova, de uma peça só.
+
+**Como eu verifiquei isso sem poder rodar o jogo:** fiz o mesmo cálculo em
+Python antes de escrever o código de verdade — conferi que a faixa nova não
+tem nenhum "buraco" nem triângulo mal-formado (770 triângulos, todos
+válidos), que ela vira pro lado certo em 100% dos casos, e que mesmo na
+curva mais fechada da pista a faixa não se dobra em cima dela mesma
+(sobra 42% de margem lá, com folga). Também conferi que nada mais no jogo
+depende do chão antigo ser "sólido" pra funcionar (o sistema de grama, o
+sistema de resgate de carrinho preso, os bots) — ninguém usa esse tipo de
+verificação, só o motor de física em si.
+
+**Sendo bem honesto sobre o risco desta mudança:** essa é a mudança mais
+incerta que eu fiz no projeto até agora. Diferente da correção da linha de
+chegada (que eu consegui PROVAR matematicamente que estava errada), esta é
+uma aposta bem fundamentada — meu raciocínio faz sentido de engenharia de
+jogos e eu validei tudo que dava pra validar sem rodar — mas só você
+dirigindo de verdade vai confirmar se ela realmente resolve o
+travamento/pulo. Se não resolver (ou piorar algo), é fácil desfazer: eu
+guardei exatamente o que precisa mudar de volta.
+
+**Peço que você teste com atenção nesta rodada:** dirija a Carrera Kart
+bastante, em retas e curvas, e me diga se o travamento/pulo sumiu,
+diminuiu, ficou igual, ou piorou. Se puder, tente notar se ainda acontece
+e em que ponto da pista (perto de qual curva, ou em alguma reta específica)
+— isso me ajuda muito a saber se a causa era mesmo essa ou se tem outra
+coisa acontecendo.
+
+Nada foi commitado.
+
+## Rodada 39 (continuação 4, 2026-08-25) — piso da Oval, vibração em batida e grama mais lenta nas duas pistas
+
+Você confirmou que o piso novo da Carrera Kart resolveu 100% o travamento (3
+voltas limpas) e pediu três coisas juntas: aplicar a mesma técnica na Oval e
+"guardar o registro" como padrão para pistas futuras; vibração ao bater no
+muro ou em outro carrinho; e diminuir um pouco a velocidade na grama, nas
+duas pistas.
+
+**1) Piso da Oval reconstruído com a mesma técnica.** Apliquei na Oval
+exatamente a mesma solução que resolveu o problema na Carrera Kart: o chão
+físico da pista virou uma faixa única e contínua (sem emendas), e os
+ladrilhos visuais de antes viraram só decoração. Diferença importante para
+ser honesto: você nunca reportou travamento na Oval como na Carrera Kart,
+então essa mudança é preventiva, não uma correção de um problema
+confirmado por lá. Como é a mesma técnica já validada (matematicamente e
+agora também na prática, pela sua confirmação na Carrera Kart), o risco é
+baixo — mas ainda peço que você rode algumas voltas na Oval também, só
+pra eu confirmar que não sobrou nenhum efeito colateral.
+
+**Virou o padrão do projeto.** A partir de agora, toda pista nova que eu
+construir vai nascer direto com esse tipo de piso único (sem separar em
+vários blocos), em vez de eu precisar corrigir depois. Registrei isso no
+documento do projeto para não esquecer nas próximas pistas.
+
+**2) Vibração ao bater em muro ou em outro carrinho.** Criei um novo
+componente (`KartImpactHapticsController`) que vibra o celular quando o
+carrinho colide com algo sólido (muro, outro carrinho), usando a mesma
+lógica de "quão forte foi a batida" (velocidade do impacto x ângulo) que já
+existia pronta no projeto (calculada, mas nunca usada até hoje). Detalhe
+técnico importante: essa vibração NÃO muda a física da batida — o carrinho
+continua perdendo velocidade do jeito que já perdia antes (pela física
+normal da colisão), eu só adicionei o aviso tátil por cima, sem mexer em
+como o carrinho reage à batida.
+
+**3) Grama agora também deixa o carrinho mais lento (não só derrapa mais).**
+Aqui encontrei uma limitação real no código: a grama já reduzia a aderência
+nas curvas (o carrinho escorregava mais), mas nunca tinha sido conectada à
+aceleração/velocidade máxima — ou seja, na reta, andar na grama era
+idêntico a andar no asfalto. Corrigi isso: agora o mesmo número que já
+existia para a grama (usado nas curvas) também reduz a aceleração e a
+velocidade máxima. Usei o mesmo valor que já estava configurado para a
+grama da Oval (uma redução de 50%) para manter os dois efeitos (curva e
+reta) consistentes entre si — se achar que ficou lento demais ou de menos,
+é só um número pra eu ajustar.
+
+**A Carrera Kart não tinha NENHUMA área de grama até hoje** — isso é
+novo, não um ajuste de algo que já existia. Criei uma faixa de grama de
+1,5 metro de largura dos dois lados da pista, entre o asfalto e o
+muro/barreira. A largura de 1,5m foi um primeiro palpite razoável; se
+sentir que a faixa é curta/longa demais, eu ajusto o número.
+
+**Um risco que quero deixar bem claro, sem esconder:** a forma mais simples
+de implementar "ficar mais lento na grama" foi limitar direto a velocidade
+máxima permitida enquanto o carrinho está na grama. Isso funciona bem se
+você já está andando devagar ou médio quando entra na grama. Mas se você
+entrar na grama vindo em velocidade máxima de asfalto, a redução pode ser
+sentida como um "freio" meio brusco no instante que toca a grama, em vez de
+uma desaceleração suave. Eu não tenho como sentir isso rodando o jogo — só
+você vai poder confirmar se ficou natural ou se pareceu estranho. Se
+parecer brusco demais, dá pra suavizar (built em cima de uma força de
+frenagem gradual em vez de um limite instantâneo), mas isso é uma mudança
+um pouco maior do que a de hoje.
+
+**O que peço que você teste e me diga:**
+- Oval: sentiu alguma mudança (bom ou ruim) na dirigibilidade do piso?
+- Vibração: sentiu o celular vibrar ao bater no muro/outro carrinho? A
+  intensidade/frequência ficou boa ou incomodou?
+- Grama (nas duas pistas): sentiu o carrinho mais lento na grama? A faixa
+  nova na Carrera Kart (fora do asfalto, antes do muro) tem uma largura
+  que faz sentido, ou parece curta/comprida demais?
+- Se entrar na grama em alta velocidade, o freio pareceu brusco demais?
+
+Nada foi commitado.
+
+## Rodada 39 (continuação 5, 2026-08-25) — vibração ligada o tempo todo, vácuo "grudando" no carro da frente
+
+Você reportou dois problemas novos na vibração/vácuo que acabei de adicionar,
+e voltou a levantar o bug antigo do grid/pole. Investiguei os dois
+primeiros a fundo e já corrigi; o terceiro (grid) explico por que ainda não
+mexi de novo.
+
+**1) Vibração tocando o jogo inteiro, não só na batida — CORRIGIDO.** Causa
+raiz confirmada: o Unity não diferencia "o carrinho está apoiado no chão"
+de "o carrinho bateu numa parede" — os dois contam como "colisão" pro
+motor de física, porque o piso novo (aquela faixa única e contínua das
+últimas rodadas) é um objeto físico sólido, e o carrinho está sempre
+encostado nele enquanto anda. Meu componente de vibração não sabia
+diferenciar isso, então vibrava o tempo todo, em qualquer velocidade —
+por isso você sentiu igual em toda a pista, inclusive na Oval, mesmo sem
+bater em nada de verdade. Corrigido checando a direção da superfície
+tocada: o chão sempre empurra pra CIMA (perpendicular à pista), enquanto
+uma parede ou outro carrinho empurra de LADO — agora só vibra quando o
+toque vem de um ângulo de parede/carrinho, nunca do chão.
+
+**2) Vácuo "grudando" no carro da frente — investigado e corrigido.**
+Primeiro, o que eu CONFIRMEI lendo o código com cuidado: o cálculo do
+vácuo nunca mexe no carrinho da frente, só reduz a resistência do ar do
+seu PRÓPRIO carrinho enquanto está perto de outro à frente — matematicamente
+não existe um caminho onde ele afeta quem está na frente. Então a sua
+observação de "grudar" tem outra explicação, que eu encontrei: o bônus de
+velocidade do vácuo ficava no MÁXIMO o tempo todo conforme você chegava
+mais perto, inclusive praticamente encostando no carro da frente — ou
+seja, nunca existia um ponto em que "chegar mais perto" parasse de valer a
+pena, então o jogo meio que incentivava você a continuar empurrando pra
+frente até encostar de verdade. Corrigi isso: agora, quando os dois
+carrinhos já estão bem próximos (cerca de um comprimento de kart de
+distância, ou seja, já quase encostando), o jogo para de contar isso como
+"vácuo" — é tratado como contato, não mais como rebufo — e o bônus some
+antes de virar empurrão. Fiz questão de não mexer na fórmula interna do
+vácuo em si (ela tem um teste automatizado formal guardando o
+comportamento "quanto mais perto, mais bônus", que é um requisito
+documentado do projeto) — a correção fica só na parte que decide QUANDO
+considerar que você está "no vácuo" de alguém.
+
+**Sobre "o vácuo não tem relação com o kart doido":** concordo com a sua
+correção — reli meu raciocínio anterior e não tenho evidência real de que
+o vácuo cause os bots ficarem "loucos e perdidos" de forma mais ampla; foi
+uma hipótese meio apressada da minha parte. Ainda não sei o que causa esse
+comportamento mais genérico dos bots. Se puder me contar com mais detalhe
+na próxima vez que acontecer (o bot para de andar? anda de ré sem motivo?
+sai da pista? fica girando no lugar? em que ponto da pista?) — ou, melhor
+ainda, uma gravação de tela de uns segundos — eu consigo investigar de
+verdade em vez de ficar chutando.
+
+**3) Grid/pole position ("guarda a posição") — ainda sem solução nesta
+rodada, de propósito.** Reli de novo toda a ordem de inicialização
+(quando o input do carrinho é travado, quando o sistema de resgate liga o
+monitoramento, quando a reposição pra pole roda) e não achei nenhuma
+inconsistência nova — é a segunda vez que reviso isso só lendo código sem
+achar a falha real. Prefiro ser honesto: não vou arriscar uma terceira
+correção "no escuro" sem dado nenhum, porque já aconteceu de eu
+"consertar" algo baseado só em leitura de código e a causa real ser outra
+(foi o que aconteceu com a pista suave da rodada 39, lembra?). As mensagens
+de diagnóstico que já coloquei no código desde a rodada 38 continuam lá.
+**Já que você vai testar agora mesmo: se puder me mandar o
+`rkw_logcat.txt`** (o próprio `build_deploy_verify.sh` já gera esse
+arquivo) depois de tentar o modo sozinho, eu finalmente vou conseguir ver
+dado real em vez de só ler código, e resolver isso de vez.
+
+Nada foi commitado. Mesmo comando de sempre: `bash scripts/build_deploy_verify.sh`.
+
+## Rodada 39 (continuação 6, 2026-08-25) — grid/pole RESOLVIDO com prova real, bônus: log poluído e descoberta de FPS
+
+Você mandou o `rkw_logcat_manual.txt` de verdade (jogando de fato, não só
+abrindo o app) — e dessa vez tinha o dado que faltava.
+
+**1) Grid/pole ("modo sozinho não larga na pole") — causa raiz encontrada e
+corrigida, com prova concreta pela primeira vez.** O log mostrou, numa
+corrida sozinho de verdade:
+- Antes de confirmar "sozinho": carrinho em `(-57.00, 0.07, -13.20)`.
+- Corrigido pra pole: `(-41.00, 0.55, -13.20)` — aplicado certinho.
+- 3 segundos depois (quando a contagem 3-2-1 termina e você ganha
+  controle): carrinho de volta em `(-57.00, 0.07, -13.20)` — a posição
+  ANTIGA, antes da correção!
+
+Achei a causa técnica exata: o carrinho usa um recurso do Unity chamado
+"interpolação" pra deixar o movimento mais suave visualmente entre um
+cálculo de física e outro. O código que reposiciona pra pole mexia
+diretamente na "posição visual" do carrinho, mas não avisava o motor de
+física sobre essa mudança — então, um instante depois, o motor de física
+"corrigia" a posição visual de volta pra onde ele (o motor de física)
+ainda achava que o carrinho estava, desfazendo a correção sem nenhum erro
+aparecer. É basicamente um carrinho "fantasma" fisicamente ainda no lugar
+velho puxando o carrinho visual de volta pra lá. Corrigido: agora a
+reposição mexe direto na física do carrinho (não só no visual), então não
+sobra nada pra "puxar de volta". Essa é a primeira vez que tenho uma PROVA
+de verdade dessa causa (não só uma teoria lendo código) — as duas rodadas
+anteriores de investigação não achavam nada porque eu tinha reposicionado
+do jeito "errado" (o visual), então nunca ia aparecer como erro, só como
+comportamento estranho.
+
+**2) Bônus: log poluído com 1639 erros por corrida — corrigido.** Enquanto
+lia seu log, achei um problema separado: um sistema de diagnóstico interno
+(mede triângulos/objetos pra saber se a pista está pesada demais) tentava
+ler informação de modelos 3D que vêm configurados como "não legíveis em
+tempo real" (config padrão do Unity pra economizar memória em celular) —
+e cada tentativa gerava um erro no log. Eram 1639 erros por corrida, todos
+de uma vez, o que provavelmente causava um travadinha bem no meio da
+corrida. Corrigido: agora ele pula esses modelos educadamente em vez de
+tentar e falhar. Isso não muda nada que você vê ou sente diretamente, só
+limpa o log e tira esse pico de erro.
+
+**3) Descoberta importante (ainda não corrigida, preciso da sua decisão):
+a Carrera Kart está rodando na metade do FPS da Oval.** O mesmo log trouxe
+um número que me chamou atenção: durante toda a corrida na Carrera Kart, o
+jogo ficou travado exatamente em 30 quadros por segundo (o MÍNIMO aceitável
+pela meta do projeto, não os 60 desejados) — enquanto na Oval, o mesmo
+celular chegou a 109-120 quadros por segundo tranquilamente. A diferença:
+a Carrera Kart hoje usa 3794 objetos sendo desenhados na tela ao mesmo
+tempo, contra apenas 725 na Oval — quase 5x mais. O próprio sistema de
+diagnóstico do projeto (criado lá no início, meta "até 100 objetos") já
+aponta isso como muito acima do esperado.
+
+Não mexi nisso ainda porque é um projeto de otimização de verdade (juntar
+vários pedacinhos da pista em menos objetos, por exemplo), não um ajuste
+pequeno — prefiro te perguntar antes de investir tempo nisso. E é uma
+pista honesta, não uma certeza: um FPS mais baixo pode SIM contribuir pra
+bots parecerem mais "nervosos"/imprecisos (menos atualizações visuais por
+segundo = movimento menos suave), mas eu não tenho prova de que seja a
+causa completa do "kart doido" que você descreveu antes — só sei que a
+Carrera Kart está tecnicamente mais pesada e mais lenta que a Oval, o que
+já vale a pena investigar por si só (a meta do projeto é 60 FPS, e ela tá
+no mínimo aceitável o tempo todo).
+
+**Pergunta pra você:** quer que eu entre na otimização da Carrera Kart
+como próximo passo grande? Se quiser, no próximo teste me diga também se
+o comportamento "louco" dos bots parece pior especificamente na Carrera
+Kart (mais pesada) do que na Oval (mais leve) — isso ajuda a confirmar ou
+descartar essa pista.
+
+Nada foi commitado. Mesmo comando de sempre: `bash scripts/build_deploy_verify.sh`.
+
+## Rodada 40 (2026-08-26) — volante/rodas, fumaça, otimização da Carrera Kart, IA dos bots e descoberta sobre a "escola de pilotagem"
+
+Você pediu, numa única mensagem, para seguir com a otimização (autorizada), corrigir o
+giro do volante/rodas, colocar fumaça no kart novo, investigar a IA dos bots a fundo, e
+avaliar um modo "escola de pilotagem" nas duas pistas — e disse para eu trabalhar sozinho
+enquanto descansa. Aqui está o que foi IMPLEMENTADO (aguardando seu teste) e o que ficou
+só PLANEJADO/como pergunta para você.
+
+### 1) Volante e rodas — IMPLEMENTADO (ajuste, não bug novo)
+
+Conferi o código linha a linha: o giro do volante e das rodas dianteiras conforme o
+ângulo de direção já existe desde a rodada 27, e já funciona independente de velocidade
+(gira mesmo parado). O ângulo real de esterçamento do kart é 24-28 graus dependendo da
+categoria — realista para um kart de verdade, mas sutil demais pra ler bem numa tela
+pequena com câmera de perseguição. É provável que essa sutileza seja o "leve movimento
+pra lado e pra outro" que você descreveu, mais do que um bug.
+
+Ajustei: agora a RODA (só a roda, não a física do kart) vira um pouco mais do que o
+ângulo real — até 38 graus visualmente na batida máxima — pra ficar mais claro que ela
+girou. A física de condução (como o kart realmente se comporta) não mudou nada, só a
+aparência da roda. Isso reverte uma decisão antiga (rodada 27, sincronizar visual com a
+física exatamente) — se preferir o realismo exato de volta, é só falar que eu desfaço.
+
+### 2) Fumaça do escapamento (kart novo) — IMPLEMENTADO, com uma ressalva honesta
+
+O modelo do kart novo já tinha pedaços de "fumaça" prontos (`smoke_puff`), mas nada no
+jogo os animava — ficavam parados, por isso não davam a sensação de fumaça de verdade.
+Escondi essas peças estáticas e criei um efeito de bolhas cinzas que nascem, crescem e
+encolhem perto do escapamento, mais frequentes quanto mais você acelera.
+
+Ressalva: não usei o sistema de partícula "de verdade" do Unity porque ele depende de um
+tipo de material que, nesse projeto, já causou problema antes em builds de Android (a
+cor sai rosa/errada quando o material certo não está disponível no celular) — e eu não
+tenho como abrir o Unity aqui pra conferir visualmente antes de mandar pra você. Optei
+pelo caminho mais seguro (bolinhas sólidas cinza que crescem e encolhem, usando a mesma
+técnica de material que já funciona em todo o resto do jogo) em vez de arriscar fumaça
+invisível ou rosa no seu celular. Não é tão bonito quanto uma nuvem de partícula de
+verdade, mas garante que você vai ver alguma coisa saindo do escapamento.
+
+### 3) Otimização da Carrera Kart — IMPLEMENTADO, causa raiz real encontrada
+
+Achei a causa técnica dos 3794 objetos desenhados por vez (vs. 725 na Oval, achado da
+rodada passada). O código já marcava cada pedacinho da pista (asfalto, barreira, meio-fio,
+grama) como "estático" com um comentário dizendo "isso é pra agrupar em menos objetos
+desenhados" — só que esse agrupamento automático do Unity só funciona pra cenas prontas
+no momento em que o jogo é compilado, e a pista deste jogo é toda construída em tempo
+real, quando você aperta pra jogar. Ou seja: a marcação existia, mas o agrupamento nunca
+rodava de verdade — cada pedacinho sempre foi desenhado separado, e a Carrera Kart, por
+ter uma pista bem mais complexa e realista (16 curvas, largura variável), tem muito mais
+pedacinhos que a Oval.
+
+Corrigido: agora, assim que a pista termina de ser montada, rodo o comando certo do
+Unity pra juntar de verdade esses pedacinhos estáticos em bem menos objetos desenhados —
+sem mudar layout, física ou visual de nada, só a forma como a placa de vídeo desenha.
+Vale pras duas pistas (a Oval também deve melhorar, só que já estava bem melhor antes).
+
+Ressalva honesta: pedacinhos de decoração importados (cerca, pneus da Kenney) podem não
+entrar 100% nesse agrupamento, dependendo de uma configuração de importação — então é
+bem provável que o número caia bastante, mas talvez não bata exatamente na meta de 100
+numa passada só. Só seu teste real no celular (FPS + o próprio log de diagnóstico) vai
+confirmar o tamanho do ganho.
+
+### 4) IA dos bots — IMPLEMENTADO um fechamento de lacuna real, documentada desde a rodada 23
+
+Reli a IA dos bots inteira (quase 600 linhas) — não é um sistema simples: já tem "olhar
+à frente" pra curvar suave, freada calculada pela física real da curva, erro de precisão
+por dificuldade, ultrapassagem/defesa contra outros karts, detecção de "travado" com
+recuperação escalonada. Achei uma lacuna real, documentada desde a rodada 23 e nunca
+fechada: "o bot bateu na traseira do meu carro" tinha uma causa suspeita anotada no
+próprio código — os bots nunca tinham noção de um kart parado ou lento bem na frente
+deles, só reagiam à pista. Corrigi isso: agora, se tem um kart na mesma "pista" (lado a
+lado, não é regra pra ultrapassagem lateral) logo à frente, o bot passa a frear/soltar o
+acelerador pra não bater nele — o mesmo princípio do "piloto automático adaptativo" de
+carros reais.
+
+Sobre "os bots precisam ser mais espertos e o difícil precisa ser desafiador": conferi os
+números do nível Difícil — ele já é configurado pra ser o mais agressivo possível dentro
+desse sistema (erro de curva zero, acelerador no talo igual ao seu, mais perto do limite
+de aderência, mais agressivo em duelo). Não mudei esses números às cegas porque já foram
+ajustados numa dúzia de rodadas anteriores com base no seu feedback. Preciso que você
+teste de novo e me diga especificamente ONDE o Difícil ainda parece fraco — eles ficam
+pra trás nas retas? nas curvas? não defendem posição? — pra eu ajustar o número certo em
+vez de adivinhar de novo (foi exatamente esse "advinhar" que causou idas e vindas nas
+rodadas 20-23).
+
+### 5) Escola de pilotagem — DESCOBERTA importante, decisão sua antes de eu programar
+
+Antes de inventar um design do zero, fui conferir o plano formal do projeto
+(`tasks.md`) — e essa ideia JÁ está lá, detalhada, como Milestone 7 ("Escola, Instrutor
+e Progressão"): 10 módulos com desbloqueio progressivo, linha ideal que vai
+desaparecendo conforme você aprende, um "instrutor" que dá dicas por texto
+("freie em linha reta", "você freiou tarde"...), feedback por setor comparando com uma
+volta de referência, uma prova de licença no final. É bem mais completo do que eu
+imaginaria sozinho.
+
+O problema: essa Milestone 7 formalmente DEPENDE da Milestone 4 ("Cronometragem
+Completa, Setores, Ghost e Bots") — que ainda não foi construída. O que existe hoje
+(cronometragem, fantasma, bots) são só protótipos simples, do jeito que o próprio código
+já admite ("isto é um protótipo... não é a Milestone 4 de verdade"). A Milestone 4 tem
+15 tarefas formais (calculadora de delta por setor, volta ideal teórica, gravador de
+fantasma de verdade, sistema de bots definitivo, validador de limites de pista, testes
+formais) — nada disso existe ainda de verdade.
+
+Ou seja: pra fazer a escola de pilotagem do jeito que o PRÓPRIO projeto já planejou
+(com feedback de setor de verdade, não uma gambiarra), primeiro precisaria da Milestone
+4. Isso é bastante trabalho — não é uma tarde, é muitas rodadas.
+
+Por isso NÃO comecei a programar isso ainda — seguindo a regra de não pular
+tarefas/milestones, e porque essa é uma decisão de estratégia do projeto inteiro, não um
+ajuste pequeno. Duas opções pra você escolher quando voltar:
+
+- **Opção A — pelo livro:** eu começo a Milestone 4 de verdade (cronometragem, setores,
+  fantasma, bots definitivos), rodada por rodada, e só depois a escola de pilotagem
+  nasce em cima disso, com todo o feedback preciso que o plano descreve.
+- **Opção B — protótipo rápido primeiro:** eu construo uma versão bem mais simples
+  agora (linha ideal fixa na pista + um ponto de frenagem marcado, sem instrutor, sem
+  licença, sem progressão salva) só pra você sentir a ideia nas duas pistas, deixando
+  claro que isso NÃO é a Milestone 7 de verdade e vai precisar ser refeito depois.
+
+Nenhuma das duas eu deveria simplesmente escolher sozinho — é uma decisão sobre a ordem
+de todo o resto do projeto daqui pra frente.
+
+### Resumo do que testar
+
+Nada foi commitado. Rode `bash scripts/build_deploy_verify.sh` de novo e me diga:
+1. O volante/rodas agora dão mais a sensação de "virou de verdade"?
+2. A fumacinha aparece (mesmo que como bolinhas, não uma nuvem)?
+3. A Carrera Kart melhorou de FPS? (pode rodar `bash scripts/capture_logcat.sh` depois de
+   jogar pra eu conferir os números novos de `[RKW-PERF]`/`[RKW.Telemetry]`.)
+4. Os bots pararam de bater na traseira de kart parado/lento à frente?
+5. No Difícil, onde especificamente os bots ainda parecem fracos (reta, curva, duelo)?
+6. Escola de pilotagem: opção A (pelo livro, mais lento) ou B (protótipo rápido, precisa
+   refazer depois)?
+
+
 ## Pendências conhecidas (não fechadas por este documento)
 
 - **M3-T01 — PlayMode test** — ainda não escrito; precisa de um pequeno

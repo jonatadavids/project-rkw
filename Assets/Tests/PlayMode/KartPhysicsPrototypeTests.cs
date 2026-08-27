@@ -19,6 +19,14 @@ namespace RKW.Tests.PlayMode
             var bootstrap = bootstrapObject.AddComponent<KartPhysicsPrototypeBootstrap>();
             yield return null;
 
+            // Round 36: Awake() now only shows TrackSelectMenu and waits for
+            // a real tap before building anything -- OnTrackSelected(true)
+            // simulates picking Carrera Kart (Circuit2), the same track this
+            // test exercised by default before track choice became a
+            // runtime menu instead of a build-time constant.
+            bootstrap.OnTrackSelected(true);
+            yield return null;
+
             var kart = bootstrap.SpawnedKart;
             Assert.That(kart, Is.Not.Null);
             kart.GetComponent<KartPrototypeInput>().enabled = false;
