@@ -1077,6 +1077,23 @@ Plano de implementação incremental para o jogo mobile multiplayer de kart rent
   - _Ambiente: Unity Editor_
   - _Risco: Baixo_
 
+  - _Nota (2026-09-01/02, rodadas 44-46): fora deste fluxo formal (sem
+    DeltaCalculator/RKW.Timing/ícone direcional formal), implementado um
+    protótipo informal equivalente direto em RKW.Physics a pedido do
+    fundador ("vc pode colocar checkpoint sei la dividir a pista em 3
+    colocar uma lista e informar naquele ponto vc foi 1 segundo a mais ou
+    menos da ultima volta"): `CheckpointSplitHud` + `SectorSplitMath`
+    mostram, ao cruzar cada um dos 3 setores, o delta contra o próprio
+    melhor tempo de setor já registrado nesta sessão — sinal, cor (verde
+    mais rápido / vermelho mais devagar) e um toast central transitório,
+    sem ícone direcional dedicado. Não usa LeaderboardKey nem persiste
+    entre sessões (reseta a cada corrida), e não tem property test formal
+    equivalente ao M4-T03. NÃO substitui esta task nem M4-T03 — mantido em
+    aberto ([ ]) pelos mesmos motivos já registrados para o fantasma
+    (M4-T06) e os bots (M4-T08) acima. Ver
+    claude/status-rodada-46.md (projeto Claude) para o resumo completo
+    desta leva de rodadas._
+
 - [ ] M4-T03 Property test: Sector Delta Calculation (Property 15)
   - **Property 15: Sector Delta Calculation**
   - Para qualquer conjunto de tempos de referência e tempos atuais, delta = actual - reference, corretamente sinalizado
