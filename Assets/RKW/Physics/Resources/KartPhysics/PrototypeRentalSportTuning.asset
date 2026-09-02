@@ -12,38 +12,66 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4df099511fb1464d8412716c4c661714, type: 3}
   m_Name: PrototypeRentalSportTuning
   m_EditorClassIdentifier: RKW.Physics::RKW.Physics.KartCategorySO
-  categoryId: prototype-rental-sport
-  massKilograms: 170
+  categoryId: category-13hp
+  massKilograms: 172
   centerOfMassHeightMeters: 0.20
   wheelbaseMeters: 1.05
   rearTrackWidthMeters: 1.05
-  maxSpeedKph: 70
-  zeroToMaxSeconds: 5
-  brakeDeceleration: 12
-  rearBrakeDistribution: 0.7
-  brakeOversteerGain: 1.4
+  frontTrackWidthMeters: 1.05
+  centerOfMassLongitudinalOffsetMeters: 0
+  maxSpeedKph: 85
+  zeroToMaxSeconds: 3.6
+  brakeDeceleration: 15
+  rearBrakeDistribution: 0.62
+  brakeOversteerGain: 0.3
   reverseAcceleration: 2.5
   reverseMaxSpeedKph: 12
   coastingDeceleration: 0.6
+  engineBrakingDeceleration: 0.15
   aerodynamicDrag: 0.0009
-  steeringLossAcceleration: 4.5
-  throttleRampSeconds: 0.18
-  lateralGripG: 1.5
-  peakSlipAngleDegrees: 7
-  fullLossSlipAngleDegrees: 24
-  minimumGripRatio: 0.28
+  steeringLossAcceleration: 2.8
+  throttleRampSeconds: 0.16
+  brakeApplySeconds: 0.08
+  brakeReleaseSeconds: 0.18
+  lateralGripG: 2.0
+  peakSlipAngleDegrees: 9
+  fullLossSlipAngleDegrees: 34
+  frontPeakSlipAngleDegrees: 36
+  rearPeakSlipAngleDegrees: 14
+  frontFullLossSlipAngleDegrees: 75
+  rearFullLossSlipAngleDegrees: 50
+  lowSpeedSlipThresholdMetersPerSecond: 0.3
+  frontFrictionEllipseBias: 1.05
+  rearFrictionEllipseBias: 1.4
+  minimumGripRatio: 0.3
   lateralResponse: 8
-  gripLossRate: 6
-  gripRecoveryRate: 2.2
-  maxSteeringAngleDegrees: 24
-  maximumYawRateDegrees: 120
+  gripLossRate: 5
+  gripRecoveryRate: 3
+  maxSteeringAngleDegrees: 30
+  steeringResponseCurveExponent: 0.95
+  maximumYawRateDegrees: 150
   yawResponse: 8
   yawDamping: 2.8
-  weightTransferGain: 3.8
-  innerRearLiftThreshold: 0.55
-  rigidAxleGripInfluence: 0.28
+  weightTransferGain: 4.2
+  minimumYawDampingRatio: 0.55
+  innerRearLiftThreshold: 0.32
+  rigidAxleGripInfluence: 0.06
   visualWeightTransferDegrees: 5
+  rearAxleMaxScrubYawRateLossDegPerSec: 0
+  chassisFlexFactor: 1
+  useTorqueCurveEngineModel: 0
+  engineIdleRPM: 1800
+  engineMaxRPM: 10500
+  engineRedlineRPM: 11000
+  torqueAtIdleNewtonMeters: 11
+  torqueAtLowMidRpmNewtonMeters: 20
+  torqueAtHighMidRpmNewtonMeters: 19
+  torqueAtRedlineNewtonMeters: 10
+  engineInertiaKgM2: 0.017
+  finalDriveRatio: 5.6
+  wheelRadiusMeters: 0.139
   kartLengthMeters: 1.8
   slipstreamMaxActivationLengths: 1.8
   slipstreamMaxReduction: 0.22
   slipstreamMinimumTimeSeconds: 0.5
+  slipstreamTransitionSeconds: 0.35

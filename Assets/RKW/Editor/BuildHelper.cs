@@ -30,10 +30,25 @@ namespace RKW.Editor
         /// -executeMethod; renaming both together felt riskier to do
         /// unsupervised than living with a slightly stale method name.
         /// </summary>
+        // Rodada 46 (2026-09-01) founder decision: até aqui o app sempre
+        // abria direto na pista (MainMenu.cs, um menu provisório desenhado
+        // em OnGUI, era a primeira tela real). O founder pediu pra ligar
+        // de vez o sistema mais completo que já existia no projeto, com
+        // login (Bootstrap.unity -> autenticação anônima real via Unity
+        // Gaming Services -> MainMenu.unity, um Canvas de verdade -- ver
+        // BootstrapController/MainMenuController). Bootstrap PRECISA ser a
+        // cena 0 (primeira do build) porque é ela que decide quando
+        // carregar MainMenu; a ordem de MainMenu/KartPhysicsPrototype
+        // depois dela não importa, as duas são carregadas por NOME (
+        // SceneManager.LoadScene), não por posição na lista -- mas
+        // qualquer cena carregada por nome tem que estar nesta lista pra
+        // existir de verdade dentro do APK instalado no celular.
         public static void BuildAndroidDevelopment()
         {
             var scenes = new[]
             {
+                "Assets/Scenes/Bootstrap.unity",
+                "Assets/Scenes/MainMenu.unity",
                 "Assets/Scenes/KartPhysicsPrototype.unity"
             };
 

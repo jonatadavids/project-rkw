@@ -17,33 +17,61 @@ MonoBehaviour:
   centerOfMassHeightMeters: 0.20
   wheelbaseMeters: 1.05
   rearTrackWidthMeters: 1.05
+  frontTrackWidthMeters: 1.05
+  centerOfMassLongitudinalOffsetMeters: 0
   maxSpeedKph: 85
   zeroToMaxSeconds: 5
-  brakeDeceleration: 12
-  rearBrakeDistribution: 0.7
-  brakeOversteerGain: 1.4
+  brakeDeceleration: 13.5
+  rearBrakeDistribution: 0.64
+  brakeOversteerGain: 0.5
   reverseAcceleration: 2.5
   reverseMaxSpeedKph: 12
   coastingDeceleration: 0.6
+  engineBrakingDeceleration: 0
   aerodynamicDrag: 0.0009
-  steeringLossAcceleration: 4.5
+  steeringLossAcceleration: 3.2
   throttleRampSeconds: 0.18
-  lateralGripG: 1.5
-  peakSlipAngleDegrees: 7
-  fullLossSlipAngleDegrees: 24
+  brakeApplySeconds: 0.08
+  brakeReleaseSeconds: 0.18
+  lateralGripG: 1.9
+  peakSlipAngleDegrees: 8
+  fullLossSlipAngleDegrees: 30
+  frontPeakSlipAngleDegrees: 30
+  rearPeakSlipAngleDegrees: 12
+  frontFullLossSlipAngleDegrees: 65
+  rearFullLossSlipAngleDegrees: 45
+  lowSpeedSlipThresholdMetersPerSecond: 0.3
+  frontFrictionEllipseBias: 1.05
+  rearFrictionEllipseBias: 1.35
   minimumGripRatio: 0.28
   lateralResponse: 8
   gripLossRate: 6
-  gripRecoveryRate: 2.2
-  maxSteeringAngleDegrees: 24
-  maximumYawRateDegrees: 120
+  gripRecoveryRate: 2.6
+  maxSteeringAngleDegrees: 30
+  steeringResponseCurveExponent: 1
+  maximumYawRateDegrees: 150
   yawResponse: 8
   yawDamping: 2.8
   weightTransferGain: 3.8
+  minimumYawDampingRatio: 0.5
   innerRearLiftThreshold: 0.55
-  rigidAxleGripInfluence: 0.28
+  rigidAxleGripInfluence: 0.12
   visualWeightTransferDegrees: 5
+  rearAxleMaxScrubYawRateLossDegPerSec: 0
+  chassisFlexFactor: 1
+  useTorqueCurveEngineModel: 0
+  engineIdleRPM: 1800
+  engineMaxRPM: 9500
+  engineRedlineRPM: 10000
+  torqueAtIdleNewtonMeters: 9
+  torqueAtLowMidRpmNewtonMeters: 16
+  torqueAtHighMidRpmNewtonMeters: 14
+  torqueAtRedlineNewtonMeters: 8
+  engineInertiaKgM2: 0.02
+  finalDriveRatio: 6
+  wheelRadiusMeters: 0.139
   kartLengthMeters: 1.8
   slipstreamMaxActivationLengths: 1.8
   slipstreamMaxReduction: 0.22
   slipstreamMinimumTimeSeconds: 0.5
+  slipstreamTransitionSeconds: 0.35

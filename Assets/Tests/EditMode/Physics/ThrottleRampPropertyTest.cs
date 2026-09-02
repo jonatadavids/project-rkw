@@ -1,85 +1,96 @@
 using NUnit.Framework;
+using RKW.Physics;
 using UnityEngine;
 
 namespace RKW.Physics.Tests.EditMode
 {
     /// <summary>
-    /// Property 4: Throttle Ramp Rate Limit
-    /// For any sequence of throttle inputs over time, the output throttle value
-    /// shall never increase faster than 1/0.15 per second (150ms minimum to reach
-    /// full throttle from zero).
-    /// Validates: Requirements 3.5
+    /// Property 4: Throttle Ramp Rate Limit -- for any sequence of throttle
+    /// inputs over time, the output throttle value shall never increase
+    /// faster than 1/ThrottleRampSeconds per second.
+    ///
+    /// Rewritten (2026-08-31, rigid rear axle/friction ellipse round): the
+    /// previous version of this file called Mathf.MoveTowards directly with
+    /// hand-rolled local variables, reimplementing (rather than exercising)
+    /// KartDynamics.UpdateThrottle's actual ramp -- it would have kept
+    /// passing even if UpdateThrottle's real code diverged from this copy
+    /// (e.g. used a different curve, or a wrong deltaTime). The MoveTowards-
+    /// based ramp itself needs live Rigidbody+FixedUpdate ticks to exercise
+    /// for real (UpdateThrottle is a private per-tick MonoBehaviour method),
+    /// which EditMode tests cannot drive -- see
+    /// KartThrottleBrakeRampIntegrationTests (PlayMode) for that real,
+    /// end-to-end coverage of both throttle AND the new Etapa 5 brake ramp.
+    ///
+    /// This file keeps only what EditMode CAN legitimately verify: that the
+    /// real, shipped tuning assets actually carry sane ramp configuration
+    /// (not fabricated example numbers).
     /// </summary>
     public sealed class ThrottleRampPropertyTest
     {
-        private const int Iterations = 200;
-        private const float FixedDeltaTime = 0.02f; // 50 Hz
+        private static readonly string[] TuningResourcePaths =
+        {
+            "KartPhysics/PrototypeRentalSportTuning",
+            "KartPhysics/PrototypeSchoolTuning",
+            "KartPhysics/PrototypeSportPlusTuning",
+        };
 
         [Test]
-        public void ThrottleOutput_NeverExceedsMaximumRampRate()
+        public void EveryShippedTuning_ThrottleRampSeconds_MeetsDocumentedMinimum()
         {
-            var random = new System.Random(401);
-
-            for (var iteration = 0; iteration < Iterations; iteration++)
+            foreach (var path in TuningResourcePaths)
             {
-                var rampSeconds = RandomFloat(random, 0.15f, 0.5f);
-                var maxRate = 1f / rampSeconds; // max units per second
+                var tuning = Resources.Load<KartCategorySO>(path);
+                Assert.That(tuning, Is.Not.Null, $"Could not load {path} from Resources.");
+                Assert.That(tuning.ThrottleRampSeconds, Is.GreaterThanOrEqualTo(0.15f),
+                    $"{path}: ThrottleRampSeconds below the documented [Min(0.15f)] floor.");
+            }
+        }
 
-                var smoothedThrottle = 0f;
+        [Test]
+        public void EveryShippedTuning_BrakeRampSeconds_ArePositive_AndApplyIsFasterThanRelease()
+        {
+            // Etapa 5 (2026-08-31): real design intent -- brakes should
+            // build up pressure quickly (apply) but release a bit more
+            // progressively (release), never the other way around.
+            foreach (var path in TuningResourcePaths)
+            {
+                var tuning = Resources.Load<KartCategorySO>(path);
+                Assert.That(tuning, Is.Not.Null, $"Could not load {path} from Resources.");
+                Assert.That(tuning.BrakeApplySeconds, Is.GreaterThan(0f), $"{path}: BrakeApplySeconds must be positive.");
+                Assert.That(tuning.BrakeReleaseSeconds, Is.GreaterThan(0f), $"{path}: BrakeReleaseSeconds must be positive.");
+                Assert.That(tuning.BrakeApplySeconds, Is.LessThanOrEqualTo(tuning.BrakeReleaseSeconds),
+                    $"{path}: brake apply should not be slower than release.");
+            }
+        }
 
-                // Simulate sudden full throttle input
+        [Test]
+        public void MoveTowardsRampRate_NeverExceedsOneOverRampSeconds()
+        {
+            // Documents the underlying guarantee UpdateThrottle/UpdateBrake
+            // rely on from Unity's own Mathf.MoveTowards (not a
+            // reimplementation of KartDynamics' formula -- this exercises
+            // the real engine function with the same call shape production
+            // code uses, across randomized ramp durations).
+            var random = new System.Random(401);
+            const float fixedDeltaTime = 0.02f;
+
+            for (var iteration = 0; iteration < 200; iteration++)
+            {
+                var rampSeconds = 0.15f + (float)random.NextDouble() * 0.35f;
+                var maxRate = 1f / rampSeconds;
+                var smoothed = 0f;
+
                 for (var tick = 0; tick < 100; tick++)
                 {
-                    var previousSmoothed = smoothedThrottle;
-                    var rate = 1f / Mathf.Max(0.15f, rampSeconds);
-                    smoothedThrottle = Mathf.MoveTowards(smoothedThrottle, 1f, rate * FixedDeltaTime);
-
-                    var actualRate = (smoothedThrottle - previousSmoothed) / FixedDeltaTime;
+                    var previous = smoothed;
+                    var rate = 1f / Mathf.Max(0.02f, rampSeconds);
+                    smoothed = Mathf.MoveTowards(smoothed, 1f, rate * fixedDeltaTime);
+                    var actualRate = (smoothed - previous) / fixedDeltaTime;
 
                     Assert.That(actualRate, Is.LessThanOrEqualTo(maxRate + 0.001f),
-                        $"Throttle rate exceeded at iteration {iteration}, tick {tick}: " +
-                        $"rate={actualRate:F4}/s, max={maxRate:F4}/s, ramp={rampSeconds:F3}s");
+                        $"iteration={iteration} tick={tick}: rate={actualRate:F4}/s exceeded max={maxRate:F4}/s");
                 }
             }
-        }
-
-        [Test]
-        public void ThrottleOutput_TakesAtLeast150ms_ToReachFull()
-        {
-            var rampSeconds = 0.15f; // minimum allowed
-            var rate = 1f / rampSeconds;
-            var smoothed = 0f;
-            var ticks = 0;
-
-            while (smoothed < 0.999f && ticks < 500)
-            {
-                smoothed = Mathf.MoveTowards(smoothed, 1f, rate * FixedDeltaTime);
-                ticks++;
-            }
-
-            var timeToFull = ticks * FixedDeltaTime;
-            Assert.That(timeToFull, Is.GreaterThanOrEqualTo(0.15f - FixedDeltaTime),
-                $"Throttle reached full in {timeToFull:F3}s (should take >= 0.15s)");
-        }
-
-        [Test]
-        public void ThrottleOutput_ReleaseIsImmediate()
-        {
-            // When releasing throttle, we go toward 0 at the same rate
-            // This verifies symmetry
-            var rampSeconds = 0.2f;
-            var rate = 1f / Mathf.Max(0.15f, rampSeconds);
-            var smoothed = 1f;
-
-            smoothed = Mathf.MoveTowards(smoothed, 0f, rate * FixedDeltaTime);
-
-            Assert.That(smoothed, Is.LessThan(1f),
-                "Throttle should decrease when input goes to 0");
-        }
-
-        private static float RandomFloat(System.Random random, float min, float max)
-        {
-            return min + (float)random.NextDouble() * (max - min);
         }
     }
 }

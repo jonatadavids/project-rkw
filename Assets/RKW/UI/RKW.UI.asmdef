@@ -5,7 +5,8 @@
     "RKW.Backend",
     "Unity.Localization",
     "Unity.ResourceManager",
-    "UnityEngine.UI"
+    "UnityEngine.UI",
+    "RKW.Physics"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

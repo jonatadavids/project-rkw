@@ -66,6 +66,21 @@ namespace RKW.Physics
         private void Awake()
         {
             _playerName = PlayerNameStore.GetName();
+
+            // Round 45 (2026-09-01) founder feedback: "aquela tela de
+            // configuracao antes do jogo para salvar um padrao ao meu
+            // gosto" -- this screen now opens pre-filled with whatever was
+            // last saved from SettingsMenu (reachable from MainMenu's
+            // CONFIGURAÇÕES), instead of always resetting to the same
+            // hardcoded 3 laps / 1 bot / Medio. If nothing was ever saved
+            // (RacePreferencesStore.HasSavedPreference is false), these
+            // getters already fall back to the exact same defaults this
+            // screen always used, so a first-time player sees no change.
+            _selectedLaps = RacePreferencesStore.PreferredLaps;
+            _selectedMode = RacePreferencesStore.PreferredSolo ? RaceMode.Solo : RaceMode.WithBots;
+            _selectedBotCount = _selectedMode == RaceMode.Solo ? 0 : RacePreferencesStore.PreferredBotCount;
+            _lastNonZeroBotCount = RacePreferencesStore.PreferredBotCount;
+            _selectedDifficulty = RacePreferencesStore.PreferredDifficulty;
         }
 
         private void Update()

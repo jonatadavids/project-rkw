@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace RKW.Physics
 {
@@ -182,6 +183,32 @@ namespace RKW.Physics
             _finished = true;
             _finishTime = Time.time - _raceStartTime;
             SetAllInputEnabled(false);
+            // Rodada 46 (2026-09-01) founder feedback: "quando terminar a
+            // corrida o carro poderia parar e o tempo parar tbm" -- the
+            // finish time was already frozen (see this method's own
+            // round-20 comment below), but SetAllInputEnabled(false) alone
+            // only stops NEW input; it does not cancel whatever velocity
+            // every kart already had, so they kept sliding for a bit
+            // after the race was actually over. Zero every active kart's
+            // physics velocity the instant the race ends -- see
+            // KartDynamics.StopImmediately's own doc comment.
+            foreach (var activeKart in KartDynamics.AllActiveKarts)
+            {
+                activeKart?.StopImmediately();
+            }
+            // Rodada 46 (2026-09-01) founder feedback: "o tempo la no canto
+            // superior direito ficou rodando" -- see TimingManagerLite.StopTiming's
+            // own doc comment for why that readout (TimingHUD, separate
+            // from this class's own finish-screen time) kept counting up.
+            _timing?.StopTiming();
+            // Rodada 46 (2026-09-01) continuacao -- founder request: "ele
+            // falar o melhor tempo nas 3 categorias 1 3 5 ... isso tudo no
+            // menu inicial". Persists this race's TOTAL time (not a single
+            // lap -- see RaceRecordMath's own doc comment for why that is
+            // a separate history from LapRecordStore) so MainMenu can show
+            // the best-ever total for a 1/3/5-lap race.
+            RaceRecordStore.RecordRace(_targetLaps, _finishTime, DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                PlayerNameStore.GetName(), _comparisonScope);
             ComputeLeaderboard();
             ComputeFinalStandings();
             Debug.Log($"RaceManager: race finished in {_finishTime:0.000}s ({_targetLaps} laps).");
@@ -500,6 +527,20 @@ namespace RKW.Physics
             if (GUI.Button(restartRect, "CORRER DE NOVO", _buttonStyle))
             {
                 RaceRestartButton.RestartRace();
+            }
+
+            // Rodada 46 (2026-09-01), quinta passada -- founder feedback:
+            // "quando finalizar a corrida poderia ter alem do botao de
+            // reinicio mas tbm o botao de voltar ao menu". Loads the
+            // MainMenu scene directly (not through Bootstrap again) --
+            // the anonymous Unity Gaming Services sign-in already done
+            // this app session stays signed in for the rest of the
+            // process, so there is no need to repeat that step just to
+            // get back to the menu.
+            var backToMenuRect = new Rect(restartRect.x, restartRect.yMax + 12f * scale, restartRect.width, restartRect.height);
+            if (GUI.Button(backToMenuRect, "VOLTAR AO MENU", _buttonStyle))
+            {
+                SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
             }
         }
 

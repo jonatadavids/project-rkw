@@ -258,12 +258,18 @@ namespace RKW.Tests.PlayMode
         [UnityTest]
         public IEnumerator PlaceholderButtons_DoNotNavigate_AndShowComingSoon()
         {
+            // Rodada 46 (2026-09-01) founder decision: PlayButton used to
+            // be a placeholder exactly like these two -- it now actually
+            // starts the race (see MainMenuController.StartRace and its
+            // own dedicated test below), so it was removed from this list.
+            // SchoolButton/GarageButton are unchanged: those systems still
+            // genuinely don't exist yet.
             BootstrapController.AuthenticationFactoryOverride =
                 () => new StubAuthenticationService(true);
             yield return LoadBootstrapAndWaitForMainMenu();
 
             var initialSceneCount = SceneManager.sceneCount;
-            foreach (var buttonName in new[] { "PlayButton", "SchoolButton", "GarageButton" })
+            foreach (var buttonName in new[] { "SchoolButton", "GarageButton" })
             {
                 GameObject.Find(buttonName).GetComponent<Button>().onClick.Invoke();
                 yield return null;
@@ -273,6 +279,30 @@ namespace RKW.Tests.PlayMode
                     Is.EqualTo("Disponível em breve"));
                 Assert.That(GameObject.Find("FeedbackText").activeInHierarchy, Is.True);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator PlayButton_LoadsRaceScene()
+        {
+            // Rodada 46 (2026-09-01) founder decision: JOGAR now leads to
+            // the real race instead of a "coming soon" placeholder -- see
+            // MainMenuController.StartRace and BuildHelper.cs's own
+            // round-46 comment for why KartPhysicsPrototype.unity has to
+            // be in the build's scene list for this SceneManager.LoadScene
+            // call (by name) to work on a real device.
+            BootstrapController.AuthenticationFactoryOverride =
+                () => new StubAuthenticationService(true);
+            yield return LoadBootstrapAndWaitForMainMenu();
+
+            GameObject.Find("PlayButton").GetComponent<Button>().onClick.Invoke();
+
+            yield return WaitUntil(() =>
+                SceneManager.GetActiveScene().name == "KartPhysicsPrototype");
+
+            // LoadSceneMode.Single: the race scene replaces Bootstrap+MainMenu
+            // entirely, it doesn't stack on top of them.
+            Assert.That(SceneManager.GetSceneByName("Bootstrap").isLoaded, Is.False);
+            Assert.That(SceneManager.GetSceneByName("MainMenu").isLoaded, Is.False);
         }
 
         [UnityTest]

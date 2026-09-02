@@ -20,6 +20,12 @@ namespace RKW.Physics
         /// <summary>Reloads the active scene. Shared by this button and <see cref="RaceManager"/>'s finish-screen button so there is one restart implementation.</summary>
         public static void RestartRace()
         {
+            // Rodada 46 (2026-09-01) founder feedback: "correr novamente
+            // significa reiniciar a mesma corrida... teria que ir direto"
+            // -- flag the upcoming reload so KartPhysicsPrototypeBootstrap.Awake
+            // skips MainMenu/TrackSelectMenu/RaceSetupMenu and rebuilds
+            // the same race directly. See that flag's own doc comment.
+            KartPhysicsPrototypeBootstrap.RequestQuickRestart();
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
 
@@ -34,9 +40,14 @@ namespace RKW.Physics
                 };
             }
 
-            var width = 110f * scale;
-            var height = 34f * scale;
-            var rect = new Rect((Screen.width - width) * 0.5f, 8f * scale, width, height);
+            // Round 46: shares TopCenterButtonLayout with PauseButton (which
+            // sits immediately to this button's left) so the two of them
+            // center as ONE block on Screen.width, matching RaceManager's
+            // centered META label underneath -- see that class's own doc
+            // comment. This button no longer centers itself alone.
+            var width = TopCenterButtonLayout.RestartWidthRaw * scale;
+            var height = TopCenterButtonLayout.HeightRaw * scale;
+            var rect = new Rect(TopCenterButtonLayout.RestartButtonX(scale, Screen.width), 8f * scale, width, height);
             if (GUI.Button(rect, "REINICIAR", _buttonStyle))
             {
                 RestartRace();

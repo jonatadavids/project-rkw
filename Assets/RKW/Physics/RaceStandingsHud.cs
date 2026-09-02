@@ -83,7 +83,16 @@ namespace RKW.Physics
             var panelWidth = 260f * scale;
             var shown = Mathf.Min(_scratchEntries.Count, MaxRowsShown);
             var panelHeight = (shown + 1) * rowHeight + 8f * scale;
-            var panelRect = new Rect(Screen.width - panelWidth - 12f * scale, 80f * scale, panelWidth, panelHeight);
+            // Round 44 (2026-09-01) founder feedback: this panel was
+            // overlapping TimingHUD's lap-time readout on lower-resolution
+            // screens (both anchored near the top-right corner). See
+            // HudLayoutMath's doc comment for the full root cause -- in
+            // short, TimingHUD uses fixed pixel sizes while this panel
+            // scales with screen height, so a low-scale device could see
+            // this panel's old fixed "80 * scale" start land on top of
+            // TimingHUD's rows.
+            var panelTop = HudLayoutMath.ComputeStandingsPanelTop(scale, Screen.safeArea.yMin, defaultTopPixels: 80f);
+            var panelRect = new Rect(Screen.width - panelWidth - 12f * scale, panelTop, panelWidth, panelHeight);
 
             var previousColor = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.45f);

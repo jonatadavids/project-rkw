@@ -145,6 +145,72 @@ namespace RKW.Physics.Tests.EditMode
             }
         }
 
+        [Test]
+        public void EffectiveDeceleration_IsReduced_WhenRequestedBrakingExceedsAvailableGrip()
+        {
+            // Etapa 5 (2026-08-31): wheel-lock modeling already existed
+            // inside CalculateBrakingWithSteering (the lockRatio > 1
+            // branch) but had no direct test coverage exercising that
+            // specific branch -- BrakingPropertyTests above only ever used
+            // brake/grip combinations that stay within grip. Force an
+            // overshoot here (very high requested brake decel, low
+            // available grip) and confirm the REAL function actually
+            // reduces its output below the naive "decel = maxBrake*input"
+            // request, rather than letting a locked wheel keep decelerating
+            // at full requested force.
+            const float brakeInput = 1f;
+            const float maxBrakeDeceleration = 20f; // deliberately high
+            const float lowGrip = 0.3f; // deliberately low -> low available grip
+            const float lateralGripG = 1f;
+
+            KartDynamicsMath.CalculateBrakingWithSteering(
+                brakeInput, 0f, 15f, maxBrakeDeceleration, 0.7f, lowGrip, lateralGripG, 1.2f,
+                out var effectiveDeceleration, out _);
+
+            var requestedDeceleration = maxBrakeDeceleration * brakeInput;
+            Assert.That(effectiveDeceleration, Is.LessThan(requestedDeceleration),
+                $"Requested {requestedDeceleration:F2} m/s2 exceeds available grip -- effective ({effectiveDeceleration:F2}) " +
+                "should be reduced by the wheel-lock branch, not equal the raw request.");
+        }
+
+        [Test]
+        public void EffectiveDeceleration_MatchesRequest_WhenWellWithinAvailableGrip()
+        {
+            const float brakeInput = 0.3f;
+            const float maxBrakeDeceleration = 8f;
+            const float highGrip = 1f;
+            const float lateralGripG = 1.4f; // plenty of available grip
+
+            KartDynamicsMath.CalculateBrakingWithSteering(
+                brakeInput, 0f, 15f, maxBrakeDeceleration, 0.7f, highGrip, lateralGripG, 1.2f,
+                out var effectiveDeceleration, out _);
+
+            var requestedDeceleration = maxBrakeDeceleration * brakeInput;
+            Assert.That(effectiveDeceleration, Is.EqualTo(requestedDeceleration).Within(0.0001f),
+                "Well within available grip, effective deceleration should exactly match the requested value (no lock-up reduction).");
+        }
+
+        [Test]
+        public void WheelLockRatio_IsZero_WhenRequestedIsWithinAvailableGrip()
+        {
+            var ratio = KartDynamicsMath.CalculateWheelLockRatio(5f, 10f);
+            Assert.That(ratio, Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void WheelLockRatio_RampsToOne_AsRequestedOvershootsAvailableGripBy50Percent()
+        {
+            var atThreshold = KartDynamicsMath.CalculateWheelLockRatio(10f, 10f);
+            var atHalfway = KartDynamicsMath.CalculateWheelLockRatio(12.5f, 10f);
+            var atFullLock = KartDynamicsMath.CalculateWheelLockRatio(15f, 10f);
+            var beyondFullLock = KartDynamicsMath.CalculateWheelLockRatio(30f, 10f);
+
+            Assert.That(atThreshold, Is.EqualTo(0f));
+            Assert.That(atHalfway, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(atFullLock, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(beyondFullLock, Is.EqualTo(1f).Within(0.001f), "Should clamp at 1, never exceed it.");
+        }
+
         private static float RandomFloat(System.Random random, float min, float max)
         {
             return min + (float)random.NextDouble() * (max - min);

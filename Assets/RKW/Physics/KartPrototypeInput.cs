@@ -28,6 +28,12 @@ namespace RKW.Physics
     {
         private KartDynamics _dynamics;
 
+        // Etapa 8 (2026-08-31): optional -- a kart with no
+        // KartAssistController attached behaves exactly as before Etapa 8
+        // (raw input straight to KartDynamics.SetInput). See
+        // KartAssistController's class doc.
+        private KartAssistController _assistController;
+
         // Touch state
         private int _steeringFingerId = -1;
         private Vector2 _steeringOrigin;
@@ -94,6 +100,7 @@ namespace RKW.Physics
         private void Awake()
         {
             _dynamics = GetComponent<KartDynamics>();
+            _assistController = GetComponent<KartAssistController>();
         }
 
         /// <summary>
@@ -128,7 +135,14 @@ namespace RKW.Physics
 
             if (_inputEnabled)
             {
-                _dynamics.SetInput(_steeringValue, _throttleValue, _brakeValue);
+                if (_assistController != null)
+                {
+                    _assistController.ApplyInput(_steeringValue, _throttleValue, _brakeValue, Time.deltaTime);
+                }
+                else
+                {
+                    _dynamics.SetInput(_steeringValue, _throttleValue, _brakeValue);
+                }
             }
             else
             {
@@ -459,7 +473,13 @@ namespace RKW.Physics
             // pouco maior tbm" — nudged back up a bit (0.30 -> 0.36).
             // Round 31 (2026-08-24): "Aumentar significativamente o tamanho
             // do volante" — 0.36 -> 0.48.
-            var size = Mathf.Min(zoneRect.width, zoneRect.height) * 0.48f;
+            // Round 43 (2026-09-01): feedback from someone else who played
+            // ("dica de uma pessoa que brincou") -- the on-screen wheel
+            // could be bigger. Nudged up again (0.48 -> 0.54), but staying
+            // below the 0.55 that was already tried and found too big/
+            // crowded back on 2026-08-19, since that ceiling was found on
+            // this same touch zone.
+            var size = Mathf.Min(zoneRect.width, zoneRect.height) * 0.54f;
             var bottomMargin = 34f * scale;
             var pivot = new Vector2(zoneRect.x + zoneRect.width * 0.5f, zoneRect.yMax - bottomMargin - size * 0.5f);
             var wheelRect = new Rect(pivot.x - size * 0.5f, pivot.y - size * 0.5f, size, size);

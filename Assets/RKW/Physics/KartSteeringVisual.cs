@@ -43,6 +43,12 @@ namespace RKW.Physics
         private Transform _steeringWheelProp;
         private KartDynamics _dynamics;
         private float _maxSteeringAngleDegrees = 30f;
+        // Etapa 4 (2026-08-31): wheelbase/track needed for the per-wheel
+        // Ackermann angle split below -- defaults are the same fallback
+        // values KartCategorySO itself uses, only relevant if Configure()
+        // is somehow never called (see Configure's own doc comment).
+        private float _wheelbaseMeters = 1.05f;
+        private float _frontTrackWidthMeters = 1.05f;
 
         // Round 40 (2026-08-26): see this class's doc comment above --
         // the real physics steering angle (24-28 degrees depending on
@@ -81,6 +87,8 @@ namespace RKW.Physics
             if (tuning != null)
             {
                 _maxSteeringAngleDegrees = tuning.MaxSteeringAngleDegrees;
+                _wheelbaseMeters = tuning.WheelbaseMeters;
+                _frontTrackWidthMeters = tuning.FrontTrackWidthMeters;
             }
         }
 
@@ -97,18 +105,34 @@ namespace RKW.Physics
             // above -- the cockpit wheel prop below still uses the raw
             // steeringInput directly (its own 90-degree range already
             // reads clearly, no exaggeration needed there).
-            var visualFrontWheelDegrees = Mathf.Clamp(
+            var visualCentralWheelDegrees = Mathf.Clamp(
                 steeringInput * _maxSteeringAngleDegrees * VisualFrontWheelExaggerationMultiplier,
                 -MaxVisualFrontWheelAngleDegrees, MaxVisualFrontWheelAngleDegrees);
 
+            // Etapa 4 (2026-08-31): real Ackermann geometry -- the wheel on
+            // the inside of the turn points sharper than the outside one,
+            // instead of both pivots turning by the identical angle (see
+            // KartDynamicsMath.CalculateAckermannWheelAnglesDegrees). This
+            // is purely cosmetic: the physics (ApplySteering) already uses
+            // a single correct "bicycle model" angle for the whole axle,
+            // untouched by this change. Positive steeringInput == steering
+            // right (see KartBotMath), so the FRONT-RIGHT wheel is inner
+            // when turning right, front-left is outer, and vice versa.
+            KartDynamicsMath.CalculateAckermannWheelAnglesDegrees(
+                visualCentralWheelDegrees, _wheelbaseMeters, _frontTrackWidthMeters,
+                out var innerWheelDegrees, out var outerWheelDegrees);
+            var turningRight = steeringInput > 0f;
+            var frontLeftDegrees = turningRight ? outerWheelDegrees : innerWheelDegrees;
+            var frontRightDegrees = turningRight ? innerWheelDegrees : outerWheelDegrees;
+
             if (_frontLeftPivot != null)
             {
-                _frontLeftPivot.localRotation = Quaternion.Euler(0f, visualFrontWheelDegrees, 0f);
+                _frontLeftPivot.localRotation = Quaternion.Euler(0f, frontLeftDegrees, 0f);
             }
 
             if (_frontRightPivot != null)
             {
-                _frontRightPivot.localRotation = Quaternion.Euler(0f, visualFrontWheelDegrees, 0f);
+                _frontRightPivot.localRotation = Quaternion.Euler(0f, frontRightDegrees, 0f);
             }
 
             if (_steeringWheelProp != null)

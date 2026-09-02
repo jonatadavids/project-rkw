@@ -31,12 +31,21 @@ namespace RKW.Physics
         private bool _usingV2;
         private GUIStyle _buttonStyle;
 
-        public void Configure(KartDynamics dynamics, KartPrototypeInput playerInput, Color tintColor, int raceNumber)
+        public void Configure(KartDynamics dynamics, KartPrototypeInput playerInput, Color tintColor, int raceNumber,
+            bool startsUsingV2 = false)
         {
             _dynamics = dynamics;
             _playerInput = playerInput;
             _tintColor = tintColor;
             _raceNumber = raceNumber;
+            // Round 45 (2026-09-01): the player's kart can now spawn
+            // already using the 18 HP model (see
+            // KartPhysicsPrototypeBootstrap.BeginRace and
+            // RacePreferencesStore) instead of always starting on 13 HP --
+            // this button must reflect whichever one is ACTUALLY spawned,
+            // or its label ("toque para trocar PARA X") would show the
+            // wrong current kart on the very first frame.
+            _usingV2 = startsUsingV2;
         }
 
         private void OnGUI()

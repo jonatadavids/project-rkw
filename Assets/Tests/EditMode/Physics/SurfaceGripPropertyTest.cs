@@ -1,82 +1,97 @@
 using NUnit.Framework;
+using RKW.Physics;
+using UnityEngine;
 
 namespace RKW.Physics.Tests.EditMode
 {
     /// <summary>
-    /// Property 9: Surface Grip Reduction
-    /// For any kart state, the grip coefficient on grass or dirt surface SHALL
-    /// be at most 60% of the grip coefficient on dry asphalt (reduction >= 40%).
-    /// Validates: Requirements 4.7
+    /// Property 9: Surface Grip Reduction.
+    /// For any kart state, the grip coefficient on grass/dirt surfaces
+    /// SHALL be at most 60% of the grip coefficient on dry asphalt.
+    ///
+    /// Rewritten (2026-08-31, rigid rear axle/friction ellipse round): the
+    /// previous version of this file asserted properties of hardcoded local
+    /// float literals (0.5f, 0.6f, etc.) that never touched SurfaceDataSO
+    /// or KartDynamics at all -- it would have kept passing even if
+    /// SurfaceDataSO.Configure's clamp broke entirely. This version drives
+    /// the REAL production SurfaceDataSO.Configure with the SAME grip value
+    /// KartPhysicsPrototypeBootstrap actually uses for grass
+    /// (see CreateSurface("Grass_Inner", ...) and circuit2GrassData.Configure(...),
+    /// both 0.5f), and reads the result back through the real GripMultiplier
+    /// property. See KartSurfaceGripIntegrationTests (PlayMode) for the
+    /// further end-to-end check that this real multiplier actually reduces
+    /// a live kart's cornering capacity through OnTriggerEnter.
     /// </summary>
     public sealed class SurfaceGripPropertyTest
     {
-        [Test]
-        public void GrassGripMultiplier_IsAtMost60PercentOfAsphalt()
-        {
-            // The contract: grass/dirt SurfaceDataSO must have gripMultiplier <= 0.6
-            // This test verifies the math contract that any multiplier <= 0.6
-            // produces effective grip <= 60% of baseline (1.0)
-            for (var i = 0; i <= 100; i++)
-            {
-                var grassMultiplier = i / 100f * 0.6f; // 0.0 to 0.6
-                var asphaltBaseline = 1f;
-                var ratio = grassMultiplier / asphaltBaseline;
+        // The actual value KartPhysicsPrototypeBootstrap configures for
+        // every grass surface in the game today.
+        private const float RealGrassGripMultiplier = 0.5f;
 
-                Assert.That(ratio, Is.LessThanOrEqualTo(0.6f),
-                    $"Grip ratio {ratio:F3} exceeds 60% at multiplier {grassMultiplier:F3}");
-            }
+        [Test]
+        public void RealGrassConfiguration_GripMultiplier_IsAtMost60PercentOfAsphalt()
+        {
+            var grass = ScriptableObject.CreateInstance<SurfaceDataSO>();
+            grass.Configure("grass_test", "Grass (Test)", RealGrassGripMultiplier, 0f, true);
+
+            Assert.That(grass.GripMultiplier, Is.LessThanOrEqualTo(0.6f),
+                $"Grass GripMultiplier ({grass.GripMultiplier:F3}) exceeds the 60%-of-asphalt contract.");
+
+            Object.DestroyImmediate(grass);
         }
 
         [Test]
-        public void SurfaceDataSO_GripMultiplierRange_IsValid()
+        public void Configure_ClampsGripMultiplier_ToDocumentedRange()
         {
-            // Verify that the Range attribute (0 to 1.5) allows both reduction and bonus
-            // Grass must be configured <= 0.6; asphalt = 1.0; rubber line could be > 1.0
-            var grassExpected = 0.5f; // typical grass value
-            var dirtExpected = 0.4f;  // typical dirt value
-            var asphaltExpected = 1f;
-            var curbExpected = 0.8f;  // curbs reduce slightly but mainly add instability
+            var surface = ScriptableObject.CreateInstance<SurfaceDataSO>();
 
-            Assert.That(grassExpected, Is.LessThanOrEqualTo(0.6f));
-            Assert.That(dirtExpected, Is.LessThanOrEqualTo(0.6f));
-            Assert.That(asphaltExpected, Is.EqualTo(1f));
-            Assert.That(curbExpected, Is.GreaterThan(0.6f).And.LessThan(1f));
+            surface.Configure("over", "Over", 5f, 0f, false);
+            Assert.That(surface.GripMultiplier, Is.EqualTo(1.5f).Within(0.0001f),
+                "Configure should clamp an over-range grip multiplier to the documented maximum (1.5).");
+
+            surface.Configure("under", "Under", -2f, 0f, false);
+            Assert.That(surface.GripMultiplier, Is.EqualTo(0f).Within(0.0001f),
+                "Configure should clamp a negative grip multiplier to 0.");
+
+            Object.DestroyImmediate(surface);
         }
 
         [Test]
-        public void EffectiveGrip_WithSurfaceMultiplier_RespectsReductionContract()
+        public void Configure_ClampsInstabilityFactor_To01()
         {
-            var random = new System.Random(909);
+            var surface = ScriptableObject.CreateInstance<SurfaceDataSO>();
 
-            for (var iteration = 0; iteration < 200; iteration++)
-            {
-                var baseGrip = RandomFloat(random, 0.8f, 1.4f); // lateral grip G
-                var surfaceMultiplier = RandomFloat(random, 0.3f, 0.6f); // grass/dirt range
+            surface.Configure("curb", "Curb", 0.8f, 3f, false);
+            Assert.That(surface.InstabilityFactor, Is.EqualTo(1f).Within(0.0001f));
 
-                var effectiveGrip = baseGrip * surfaceMultiplier;
-                var asphaltGrip = baseGrip * 1f;
-                var ratio = effectiveGrip / asphaltGrip;
+            surface.Configure("curb2", "Curb2", 0.8f, -1f, false);
+            Assert.That(surface.InstabilityFactor, Is.EqualTo(0f).Within(0.0001f));
 
-                Assert.That(ratio, Is.LessThanOrEqualTo(0.6f),
-                    $"Effective grip ratio {ratio:F4} exceeds 60% at iteration {iteration}: " +
-                    $"baseGrip={baseGrip:F2}, multiplier={surfaceMultiplier:F3}");
-            }
+            Object.DestroyImmediate(surface);
         }
 
         [Test]
-        public void InstabilityFactor_IsZeroForAsphalt_PositiveForCurbs()
+        public void Configure_AsphaltBaseline_HasFullGripAndNoInstability()
         {
-            // Contract: asphalt has 0 instability, curbs have > 0
-            var asphaltInstability = 0f;
-            var curbInstability = 0.5f; // typical value
+            var asphalt = ScriptableObject.CreateInstance<SurfaceDataSO>();
+            asphalt.Configure("asphalt_dry", "Asphalt (Dry)", 1f, 0f, false);
 
-            Assert.That(asphaltInstability, Is.Zero);
-            Assert.That(curbInstability, Is.GreaterThan(0f).And.LessThanOrEqualTo(1f));
+            Assert.That(asphalt.GripMultiplier, Is.EqualTo(1f));
+            Assert.That(asphalt.InstabilityFactor, Is.EqualTo(0f));
+            Assert.That(asphalt.IsOffTrack, Is.False);
+
+            Object.DestroyImmediate(asphalt);
         }
 
-        private static float RandomFloat(System.Random random, float min, float max)
+        [Test]
+        public void RollingResistanceMultiplier_DefaultsToOne_ForEveryExistingSurface()
         {
-            return min + (float)random.NextDouble() * (max - min);
+            // Etapa 5 (2026-08-31): new field, must default to a pure
+            // no-op (1.0) so every asset/procedural surface predating this
+            // etapa keeps its exact old rolling-resistance behavior.
+            var surface = ScriptableObject.CreateInstance<SurfaceDataSO>();
+            Assert.That(surface.RollingResistanceMultiplier, Is.EqualTo(1f));
+            Object.DestroyImmediate(surface);
         }
     }
 }

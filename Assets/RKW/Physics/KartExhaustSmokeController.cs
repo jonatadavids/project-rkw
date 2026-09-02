@@ -47,7 +47,13 @@ namespace RKW.Physics
     {
         private const int PoolSize = 6;
         private const float PuffLifetimeSeconds = 1.1f;
-        private const float PuffMaxRadiusMeters = 0.09f;
+        // Round 43 (2026-09-01): founder playtest, "eu nao vi a fumacinha
+        // saindo" -- at 0.09m max radius (18cm across) these opaque grey
+        // puffs were apparently too small/subtle to notice during real
+        // driving, even though the automated wiring test confirms they
+        // ARE spawning and growing. Bumped up (0.09 -> 0.16) to make them
+        // easier to spot without turning them into something silly-huge.
+        private const float PuffMaxRadiusMeters = 0.16f;
         private const float PuffRiseSpeedMetersPerSecond = 0.5f;
         private const float PuffBackDriftSpeedMetersPerSecond = 0.3f;
         private const float PuffSidewaysSpreadMeters = 0.05f;

@@ -12,34 +12,66 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4df099511fb1464d8412716c4c661714, type: 3}
   m_Name: PrototypeSchoolTuning
   m_EditorClassIdentifier: RKW.Physics::RKW.Physics.KartCategorySO
-  categoryId: prototype-school
+  categoryId: category-6-5hp
   massKilograms: 165
   centerOfMassHeightMeters: 0.22
   wheelbaseMeters: 1.05
   rearTrackWidthMeters: 1.05
-  maxSpeedKph: 55
-  zeroToMaxSeconds: 8
+  frontTrackWidthMeters: 1.05
+  centerOfMassLongitudinalOffsetMeters: 0
+  maxSpeedKph: 60
+  zeroToMaxSeconds: 6.5
   brakeDeceleration: 10
+  rearBrakeDistribution: 0.65
+  brakeOversteerGain: 0.4
+  reverseAcceleration: 2.5
+  reverseMaxSpeedKph: 12
   coastingDeceleration: 0.8
+  engineBrakingDeceleration: 0
   aerodynamicDrag: 0.001
-  steeringLossAcceleration: 3.5
-  throttleRampSeconds: 0.2
-  lateralGripG: 1
-  peakSlipAngleDegrees: 8
-  fullLossSlipAngleDegrees: 28
-  minimumGripRatio: 0.32
+  steeringLossAcceleration: 2
+  throttleRampSeconds: 0.26
+  brakeApplySeconds: 0.08
+  brakeReleaseSeconds: 0.18
+  lateralGripG: 1.25
+  peakSlipAngleDegrees: 11
+  fullLossSlipAngleDegrees: 42
+  frontPeakSlipAngleDegrees: 36
+  rearPeakSlipAngleDegrees: 13
+  frontFullLossSlipAngleDegrees: 75
+  rearFullLossSlipAngleDegrees: 48
+  lowSpeedSlipThresholdMetersPerSecond: 0.3
+  frontFrictionEllipseBias: 1.2
+  rearFrictionEllipseBias: 1.5
+  minimumGripRatio: 0.42
   lateralResponse: 7
-  gripLossRate: 5
-  gripRecoveryRate: 2.5
-  maxSteeringAngleDegrees: 28
-  maximumYawRateDegrees: 105
+  gripLossRate: 4.5
+  gripRecoveryRate: 3.5
+  maxSteeringAngleDegrees: 30
+  steeringResponseCurveExponent: 1
+  maximumYawRateDegrees: 140
   yawResponse: 7
   yawDamping: 2.5
-  weightTransferGain: 3.4
-  innerRearLiftThreshold: 0.62
-  rigidAxleGripInfluence: 0.22
+  weightTransferGain: 3
+  minimumYawDampingRatio: 0.5
+  innerRearLiftThreshold: 0.42
+  rigidAxleGripInfluence: 0.1
   visualWeightTransferDegrees: 4
+  rearAxleMaxScrubYawRateLossDegPerSec: 0
+  chassisFlexFactor: 1
+  useTorqueCurveEngineModel: 0
+  engineIdleRPM: 1800
+  engineMaxRPM: 7000
+  engineRedlineRPM: 7500
+  torqueAtIdleNewtonMeters: 7
+  torqueAtLowMidRpmNewtonMeters: 12
+  torqueAtHighMidRpmNewtonMeters: 10
+  torqueAtRedlineNewtonMeters: 6
+  engineInertiaKgM2: 0.025
+  finalDriveRatio: 6.8
+  wheelRadiusMeters: 0.139
   kartLengthMeters: 1.8
   slipstreamMaxActivationLengths: 1.8
   slipstreamMaxReduction: 0.15
   slipstreamMinimumTimeSeconds: 0.5
+  slipstreamTransitionSeconds: 0.35

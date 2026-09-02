@@ -138,6 +138,39 @@ namespace RKW.Physics
         private List<int> _shuffledRaceNumbers;
         private int _playerRaceNumber;
 
+        // Rodada 46 (2026-09-01) founder feedback: "correr novamente
+        // significa reiniciar a mesma corrida, ai cai na tela de circuito
+        // e configuracao novamente ao inves de ir direto" -- REINICIAR
+        // (RaceRestartButton.RestartRace) reloads the whole scene, which
+        // is deliberately simple/reliable (see that button's own class
+        // doc), but that means it also re-runs Awake() from scratch and
+        // shows MainMenu -> TrackSelectMenu -> RaceSetupMenu all over
+        // again just to run the exact same race. A `static` field DOES
+        // survive SceneManager.LoadScene on a real build (no C# domain
+        // reload happens on scene load outside the editor), so
+        // RaceRestartButton sets this flag right before reloading, and
+        // Awake() below skips straight to BeginRace() with the track/kart/
+        // laps/bots/difficulty the player was already using (track choice
+        // from RacePreferencesStore.PreferredUseTechnicalCircuit2, saved
+        // by OnTrackSelected below; everything else already came from
+        // RacePreferencesStore/RaceSetupMenu's own last-used values).
+        private static bool _quickRestartRequested;
+
+        // Rodada 46 (2026-09-01), second pass -- founder feedback: "ao
+        // reiniciar ele volta a tela de configuracao" -- see
+        // RacePreferencesStore.SaveLastRaceSetup's own doc comment. Set
+        // once per Awake() (instance field, not static -- unlike the flag
+        // above, this only needs to survive from Awake() to the BeginRace()
+        // call it makes right afterward, not across the scene reload
+        // itself).
+        private bool _isQuickRestart;
+
+        /// <summary>Called by RaceRestartButton right before it reloads the scene -- see this field's own doc comment.</summary>
+        public static void RequestQuickRestart()
+        {
+            _quickRestartRequested = true;
+        }
+
         private void Awake()
         {
             if (FindFirstObjectByType<KartDynamics>() != null)
@@ -145,7 +178,25 @@ namespace RKW.Physics
                 return;
             }
 
+            // Rodada 46: Time.timeScale is a global engine setting that
+            // does NOT reset on its own across a scene reload -- if the
+            // player paused (see PauseButton) and then hit REINICIAR while
+            // paused, the new race would silently start frozen with no
+            // obvious way to unpause. Every (re)load of this scene starts
+            // from a known-good unpaused state, no matter what happened
+            // in whatever scene instance ran before it.
+            Time.timeScale = 1f;
+
             UnityEngine.Physics.gravity = new Vector3(0f, -9.81f, 0f);
+
+            if (_quickRestartRequested)
+            {
+                _quickRestartRequested = false;
+                _isQuickRestart = true;
+                UseTechnicalCircuit2 = RacePreferencesStore.PreferredUseTechnicalCircuit2;
+                BeginRace();
+                return;
+            }
 
             // Round 36: track choice now comes from TrackSelectMenu (shown
             // FIRST, before any track/kart geometry exists) instead of the
@@ -155,9 +206,57 @@ namespace RKW.Physics
             // build, kart spawn, camera, timing, the other pre-race
             // buttons, RaceSetupMenu) now runs inside BeginRace(), once
             // this first screen confirms.
+            // Round 44 (2026-09-01): a real KartGrid main menu (MainMenu.cs,
+            // an OnGUI approximation of the approved mockup) used to show
+            // FIRST here, before TrackSelectMenu.
+            // Round 46 (2026-09-01) founder decision: this scene is no
+            // longer the app's front door -- the real entry point is now
+            // Bootstrap.unity -> MainMenu.unity (a proper Canvas screen,
+            // behind a real anonymous Unity Gaming Services sign-in; see
+            // BootstrapController/MainMenuController) -- see BuildHelper.cs's
+            // own round-46 comment for the build-scene-list side of this.
+            // That Canvas MainMenu's JOGAR button loads straight into THIS
+            // scene, so showing this scene's OWN MainMenu.cs on top would
+            // recreate the exact "duas telas de menu" duplication problem
+            // just fixed for REINICIAR (see RequestQuickRestart's own
+            // comment above) -- skip straight to TrackSelectMenu instead.
+            // MainMenu.cs/ShowMainMenu itself is left in place, unused, in
+            // case this decision needs to be revisited (e.g. if the UGS
+            // sign-in step turns out to be unreliable in the field and
+            // this scene needs to work as a standalone fallback again) --
+            // not deleted since removing it is a separate decision from
+            // just not calling it. The PlayMode test that calls
+            // OnTrackSelected directly to simulate a tap (see
+            // AssemblyInfo.cs's round-36 note) is unaffected either way.
+            ShowTrackSelectMenu();
+        }
+
+        private void ShowMainMenu()
+        {
+            var mainMenuObject = new GameObject("MainMenu");
+            var mainMenu = mainMenuObject.AddComponent<MainMenu>();
+            mainMenu.Configure(ShowTrackSelectMenu, ShowSettingsMenu);
+        }
+
+        private void ShowTrackSelectMenu()
+        {
             var trackMenuObject = new GameObject("TrackSelectMenu");
             var trackMenu = trackMenuObject.AddComponent<TrackSelectMenu>();
             trackMenu.Configure(OnTrackSelected);
+        }
+
+        // Round 45 (2026-09-01) founder feedback: CONFIGURAÇÕES in
+        // MainMenu now opens a real screen (kart/laps/bots/difficulty,
+        // same fields RaceSetupMenu already offers pre-race) that saves a
+        // personal default to RacePreferencesStore instead of showing an
+        // "em construção" toast. Returning from it (Save or Voltar) goes
+        // back to MainMenu rather than continuing into TrackSelectMenu --
+        // this is a settings detour, not a step in starting a race.
+        private void ShowSettingsMenu()
+        {
+            var settingsMenuObject = new GameObject("SettingsMenu");
+            var settingsMenu = settingsMenuObject.AddComponent<SettingsMenu>();
+            settingsMenu.Configure(ShowMainMenu);
         }
 
         // internal (was private): KartPhysicsPrototypeTests (PlayMode)
@@ -166,6 +265,11 @@ namespace RKW.Physics
         internal void OnTrackSelected(bool useTechnicalCircuit2)
         {
             UseTechnicalCircuit2 = useTechnicalCircuit2;
+            // Rodada 46: remembered so RequestQuickRestart (REINICIAR) can
+            // rebuild this exact race directly, without showing
+            // TrackSelectMenu again -- see RacePreferencesStore.SaveTrackChoice's
+            // own doc comment.
+            RacePreferencesStore.SaveTrackChoice(useTechnicalCircuit2);
             BeginRace();
         }
 
@@ -204,7 +308,19 @@ namespace RKW.Physics
             _shuffledGridSlotIndices = BuildShuffledGridSlotIndices(_trackConfiguration);
             _shuffledRaceNumbers = BuildShuffledRaceNumbers();
             _playerRaceNumber = _shuffledRaceNumbers[0];
-            SpawnedKart = CreatePlayerKart(_trackConfiguration, _shuffledGridSlotIndices, _playerRaceNumber);
+            // Round 45 (2026-09-01) founder feedback: "salvar um padrao ao
+            // meu gosto" -- the player's kart category, previously always
+            // hardcoded to 13 HP/RentalSport at spawn (only changeable
+            // afterwards via KartCategoryToggleButton), now starts from
+            // whatever was saved in SettingsMenu. _currentPlayerKartModelResourcePath
+            // is set here BEFORE spawning (not just inside RebuildKartVisual)
+            // so the ghost visual (which reads this same field) is correct
+            // from the very first frame too.
+            var preferredKartModelPath = RacePreferencesStore.PreferredKartModelResourcePath;
+            var preferredKartTuningPath = RacePreferencesStore.PreferredKartTuningResourcePath;
+            _currentPlayerKartModelResourcePath = preferredKartModelPath;
+            SpawnedKart = CreatePlayerKart(_trackConfiguration, _shuffledGridSlotIndices, _playerRaceNumber,
+                preferredKartModelPath, preferredKartTuningPath);
             SetupPlayerRecovery(SpawnedKart, _trackConfiguration);
             // Kept locked until RaceStartController releases it after the
             // countdown — otherwise the player could drive around freely
@@ -218,6 +334,19 @@ namespace RKW.Physics
             // para fazer o start novamente da sessão... a qualquer tempo".
             var restartObject = new GameObject("RaceRestartButton");
             restartObject.AddComponent<RaceRestartButton>();
+
+            // Rodada 46 (2026-09-01) founder feedback: "poderia ter um
+            // botao de pause e continue ainda mas nesse modo de bot ou com
+            // o fantasma" -- this prototype is entirely single-device
+            // (bots + a recorded ghost, see GhostController's own doc
+            // comment; PhotonNetworkTransport exists but nothing in this
+            // race loop actually uses it yet), so a full stop is always
+            // safe here -- there is no live opponent on another device who
+            // would be affected by pausing. See PauseButton's own class
+            // doc for the Time.timeScale approach and why it needs
+            // revisiting once real online races exist.
+            var pauseObject = new GameObject("PauseButton");
+            pauseObject.AddComponent<PauseButton>();
 
             // Founder request, 2026-08-23: "queria aquela visão do piloto
             // era seria perfeita para o nosso jogo" — this project only
@@ -235,20 +364,47 @@ namespace RKW.Physics
             var kartToggleObject = new GameObject("KartCategoryToggleButton");
             kartToggleObject.AddComponent<KartCategoryToggleButton>().Configure(
                 SpawnedKart, SpawnedKart.GetComponent<KartPrototypeInput>(),
-                new Color(0.15f, 0.35f, 0.85f), _playerRaceNumber);
+                new Color(0.15f, 0.35f, 0.85f), _playerRaceNumber,
+                startsUsingV2: RacePreferencesStore.PreferredUsesKartV2);
 
             // Founder playtest feedback, 2026-08-19: "se for tranquilo
             // escolher entre 1, 3 e 5 voltas e até 10 bots e o nível deles".
             // Bots and the race itself are only spawned/started once the
             // player picks lap count / bot count / difficulty here, so the
             // grid (and the countdown) reflect what was actually chosen.
-            var menuObject = new GameObject("RaceSetupMenu");
-            var menu = menuObject.AddComponent<RaceSetupMenu>();
-            menu.Configure(OnRaceSetupConfirmed);
+            //
+            // Rodada 46 (2026-09-01), second pass -- founder feedback: "ao
+            // reiniciar ele volta a tela de configuracao" -- a quick
+            // restart (see RequestQuickRestart) is supposed to jump
+            // straight back into the SAME race with no menus at all, but
+            // this screen was still showing every time because it is
+            // created unconditionally right here, regardless of the
+            // quick-restart flag checked earlier in Awake()/BeginRace().
+            // When quick-restarting AND at least one race has actually
+            // been confirmed before (HasLastRaceSetup), skip this screen
+            // and feed OnRaceSetupConfirmed exactly what was used last
+            // time directly instead.
+            if (_isQuickRestart && RacePreferencesStore.HasLastRaceSetup)
+            {
+                OnRaceSetupConfirmed(RacePreferencesStore.LastRaceLaps, RacePreferencesStore.LastRaceBotCount,
+                    RacePreferencesStore.LastRaceDifficulty);
+            }
+            else
+            {
+                var menuObject = new GameObject("RaceSetupMenu");
+                var menu = menuObject.AddComponent<RaceSetupMenu>();
+                menu.Configure(OnRaceSetupConfirmed);
+            }
         }
 
         private void OnRaceSetupConfirmed(int laps, int botCount, BotDifficulty difficulty)
         {
+            // Rodada 46, second pass: remembered unconditionally (not just
+            // when the player opens SettingsMenu) so a later quick-restart
+            // can reproduce this exact race -- see
+            // RacePreferencesStore.SaveLastRaceSetup's own doc comment.
+            RacePreferencesStore.SaveLastRaceSetup(laps, botCount, difficulty);
+
             // Round 37 founder feedback: "quando jogar sozinho a ideia que
             // o kart sempre saia no primeiro grid de largada, sem ficar
             // alternando quando for com bot pode alternar" -- the player's
@@ -372,6 +528,20 @@ namespace RKW.Physics
             ghostControllerObject.AddComponent<GhostController>()
                 .Configure(_timing, SpawnedKart.transform, ghostVisual, comparisonScope, laps);
 
+            // Rodada 46 (2026-09-01) founder request: "nos kart seria legal
+            // ter o nome em cima do carrinho na hora da corrida, até mesmo
+            // o fantasma" -- floating OnGUI name labels above the player,
+            // every bot, and the ghost. Wired here (not earlier in this
+            // method) because this is the first point where SpawnedKart,
+            // botControllers AND ghostVisual are all already in scope
+            // together -- same reasoning RaceStandingsHud.Configure just
+            // above already follows for player+bots. See
+            // KartNameplateHud's own doc comment for the color convention
+            // and why it reads Camera.main instead of a passed-in Camera.
+            var nameplateHudObject = new GameObject("KartNameplateHud");
+            nameplateHudObject.AddComponent<KartNameplateHud>()
+                .Configure(SpawnedKart.transform, PlayerNameStore.GetName(), botControllers, ghostVisual);
+
             // M3-T01 "Evidência: Screenshot + profiler stats" — see
             // ScenePerformanceLogger for why this makes that evidence show
             // up automatically in the next build_deploy_verify.sh run
@@ -465,8 +635,23 @@ namespace RKW.Physics
             // Round 34: the oval has 3 non-start/finish checkpoints (CP1-3);
             // Circuit2 has 11 (one per filleted vertex, CP0-CP10 — see the
             // Circuit2 constants/CreateCourseTechnicalCircuit2 below).
-            timing.Configure(UseTechnicalCircuit2 ? 16 : 3);
+            var checkpointCount = UseTechnicalCircuit2 ? 16 : 3;
+            timing.Configure(checkpointCount);
             timingObject.AddComponent<TimingHUD>();
+
+            // Round 44 (2026-09-01) founder feedback: "vc pode colocar
+            // checkpoint sei la dividir a pista em 3 colocar uma lista e
+            // informar naquele ponto vc foi 1 segundo a mais ou menos da
+            // ultima volta" -- reuses the same checkpoint triggers wired up
+            // just below (KartCheckpointDetector/CheckpointTrigger), just
+            // to also show a player-facing 3-sector split list. See
+            // SectorSplitMath's doc comment for why this passes the RAW
+            // checkpoint count (16 on Circuit2) rather than assuming every
+            // track has exactly 3 -- it groups whatever count each track
+            // actually has into exactly 3 display sectors.
+            var checkpointSplitHudObject = new GameObject("CheckpointSplitHud");
+            var checkpointSplitHud = checkpointSplitHudObject.AddComponent<CheckpointSplitHud>();
+            checkpointSplitHud.Configure(timing, checkpointCount);
 
             var detector = kart.gameObject.AddComponent<KartCheckpointDetector>();
             detector.Configure(timing);
@@ -1841,7 +2026,7 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
         /// not always pole position.
         /// </summary>
         private static KartDynamics CreatePlayerKart(TrackConfigurationSO trackConfiguration, List<int> shuffledGridSlotIndices,
-            int playerRaceNumber)
+            int playerRaceNumber, string kartModelResourcePath, string tuningResourcePath)
         {
             var gridSlots = trackConfiguration != null ? trackConfiguration.GridSlots : null;
             Vector3 position;
@@ -1867,7 +2052,7 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             position.y = 0.55f;
 
             var dynamics = CreateKartInstance("Prototype Kart", position, yaw,
-                new Color(0.15f, 0.35f, 0.85f), playerRaceNumber);
+                new Color(0.15f, 0.35f, 0.85f), playerRaceNumber, kartModelResourcePath, tuningResourcePath);
             dynamics.gameObject.AddComponent<KartPrototypeInput>();
             dynamics.gameObject.AddComponent<KartAudioBridge>();
             // Round 38 founder feedback: "a zebra poderia dar uma sensacao
@@ -2467,8 +2652,8 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             // novo design... no cockpit 3D"). See CreateWheelSteeringPivot
             // and ReplaceCockpitProp below for how each piece is derived
             // from the model's own geometry instead of a guessed offset.
-            var frontLeftPivot = CreateWheelSteeringPivot(instance.transform, "wheel_front_left_", "FrontLeftSteeringPivot");
-            var frontRightPivot = CreateWheelSteeringPivot(instance.transform, "wheel_front_right_", "FrontRightSteeringPivot");
+            var frontLeftPivot = CreateWheelSteeringPivot(instance.transform, "FrontLeftSteeringPivot", false, "wheel_front_left_");
+            var frontRightPivot = CreateWheelSteeringPivot(instance.transform, "FrontRightSteeringPivot", false, "wheel_front_right_");
             // Round 28 founder feedback: "o volante ficou ok poderia ser
             // um pouco maior tbm" — modest 20% bump on top of the
             // bounds-matched size from round 27.
@@ -2485,9 +2670,43 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             // right where the external, ANIMATED SteeringWheel prop gets
             // placed, which could read as "the wheel doesn't move" even
             // though the actual prop was rotating underneath/behind it.
-            var steeringWheelProp = ReplaceCockpitProp(instance.transform,
-                new[] { "steering_wheel", "wheel_spoke_", "steering_spoke_", "steering_hub_boss", "steering_column" },
-                SteeringWheelResourcePath, "SteeringWheel (round 27)", 1.2f);
+            // Round 42 (2026-08-27) founder feedback, after seeing the
+            // round-27 external prop in a cockpit-view screenshot: "o
+            // volante da esquerda poderia ser o mesmo do carro, o da
+            // esquerda gira, e o 3d que mandei pra voce girava tambem" --
+            // he wants the cockpit wheel to be the kart's OWN modeled
+            // steering wheel (built in his own 3D tool, where it already
+            // rotated correctly), not the separate generic SteeringWheel.obj
+            // prop round 27 swapped in on top of it. This now groups the
+            // kart's own wheel rim/plate/spokes/hub-cap into a rotating
+            // pivot -- the exact same bounds-center technique used for the
+            // front wheels above -- instead of hiding that geometry and
+            // instantiating a replacement prop. The steering COLUMN/lower-
+            // rod parts are deliberately left OUT of this prefix list and
+            // stay visible + static (a real column doesn't spin with the
+            // wheel, only the wheel and its hub cap do). KartSteeringVisual
+            // itself needed no change: it already rotates whatever
+            // transform it is handed around local Z, so the same rotation
+            // code now just turns the kart's own wheel instead of the
+            // external one.
+            //
+            // Honest caveat: there is no Unity Editor available in this
+            // environment, so this still cannot be visually confirmed here
+            // before shipping -- but it removes the one explicitly-guessed
+            // step from round 27 (matching an unrelated external model's
+            // rotation to the kart's forward direction) and replaces it
+            // with geometry that is already part of the kart itself and,
+            // per the founder, already turned correctly in the tool it was
+            // modeled in.
+            // Round 43 (2026-09-01) founder feedback: "o volante... fica
+            // meio de lado... tem um certo angulo" -- measured directly
+            // from KartV2's own geometry (see KartVisualGeometryMath), the
+            // wheel disc is modeled tilted back (face normal roughly
+            // (0, 0.61, -0.79), not the kart's straight-ahead axis), so
+            // this pivot needs "true" here to orient itself to the disc's
+            // REAL plane instead of just copying the kart body's rotation.
+            var steeringWheelProp = CreateWheelSteeringPivot(instance.transform, "SteeringWheelPivot (round 42)", true,
+                "steering_wheel", "wheel_spoke_", "steering_spoke_", "steering_hub_boss", "steering_hub");
 
             // Round 28: swapped the round-27 static PedalBox for the
             // founder's new Pedals model (has real brake_hinge_pin /
@@ -2495,8 +2714,21 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             // CreateHingePivot and KartPedalVisual. "achei eles bem
             // pequenos" -> 40% size bump, larger than the wheel's since
             // this was the stronger complaint.
+            // Round 42 (2026-08-27): founder screenshot review of the
+            // cockpit view showed FREIO/ACELERADOR sitting small and far
+            // apart near the frame edges ("um pouco distante poderia ser
+            // mais largo"). Bumped another ~25% on top of round 28's own
+            // 40% (1.4 -> 1.75 total) so they read as closer, bigger
+            // pedals rather than small distant props. Left the pedals'
+            // actual positions untouched (still each pedal's own real
+            // hinge-bounds center, from CreateHingePivot below) -- some of
+            // that "distant/spread out" feeling is really the cockpit
+            // camera's own wide 78-degree field of view stretching close
+            // objects toward the screen edges, a separate thing from this
+            // model's size, flagged here rather than silently rolled into
+            // this same change.
             var pedalsProp = ReplaceCockpitProp(instance.transform,
-                new[] { "pedal_brake", "pedal_throttle", "pedal_arm_" }, PedalsResourcePath, "Pedals (round 28)", 1.4f);
+                new[] { "pedal_brake", "pedal_throttle", "pedal_arm_" }, PedalsResourcePath, "Pedals (round 28)", 1.75f);
             var brakePivot = CreateHingePivot(instance.transform, "brake_", "brake_hinge_pin", "BrakePedalPivot");
             var throttlePivot = CreateHingePivot(instance.transform, "throttle_", "throttle_hinge_pin", "ThrottlePedalPivot");
 
@@ -2623,9 +2855,27 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             return false;
         }
 
-        private static Transform CreateWheelSteeringPivot(Transform visualRoot, string namePrefix, string pivotName)
+        /// <summary>
+        /// Round 43 (2026-09-01): <paramref name="alignPivotToMeshPlane"/>
+        /// controls how the pivot is ORIENTED (its position is always the
+        /// bounding-box center of the matched parts, unchanged). When
+        /// false (front-wheel steering pivots), the pivot just copies the
+        /// kart body's own rotation -- correct there because those wheels
+        /// steer around the kart's vertical axis regardless of the wheel's
+        /// own tilt. When true (the cockpit steering wheel), the pivot
+        /// instead orients its local Z axis to match the ACTUAL modeled
+        /// tilt of the disc (via KartVisualGeometryMath.ComputeBestFitPlaneNormal
+        /// over the matched parts' real mesh vertices) -- needed because
+        /// KartV2's steering wheel is modeled tilted back like a real
+        /// kart's, and KartSteeringVisual spins this pivot around its
+        /// local Z axis, so that axis has to actually match the disc's
+        /// face for the spin to look right instead of "off to the side,
+        /// at an angle".
+        /// </summary>
+        private static Transform CreateWheelSteeringPivot(Transform visualRoot, string pivotName,
+            bool alignPivotToMeshPlane, params string[] namePrefixes)
         {
-            var parts = FindPartsByPrefixes(visualRoot, namePrefix);
+            var parts = FindPartsByPrefixes(visualRoot, namePrefixes);
             if (parts.Count == 0)
             {
                 return null;
@@ -2642,12 +2892,92 @@ CreateCheckpointOriented("CP15", new Vector3(97.033f, 1f, -141.016f), -159.64f, 
             pivotObject.transform.position = bounds.Value.center;
             pivotObject.transform.rotation = visualRoot.rotation;
 
+            if (alignPivotToMeshPlane)
+            {
+                var meshPoints = CollectWorldVertices(parts);
+                var normal = KartVisualGeometryMath.ComputeBestFitPlaneNormal(meshPoints);
+                if (normal != Vector3.zero)
+                {
+                    // The wheel faces back toward the driver (roughly
+                    // opposite the kart's own forward/nose direction) --
+                    // pick whichever normal sign points more backward, so
+                    // the pivot's local Z (the axis KartSteeringVisual
+                    // spins) matches the disc's real face either way the
+                    // eigen-solver happened to return it (sign is
+                    // ambiguous for a plane normal).
+                    if (Vector3.Dot(normal, visualRoot.forward) > 0f)
+                    {
+                        normal = -normal;
+                    }
+
+                    pivotObject.transform.rotation = Quaternion.LookRotation(normal, visualRoot.up);
+
+                    // Rodada 46 (2026-09-01) founder feedback: "o volante
+                    // permanece torto" -- the round-45 fix (sorting points
+                    // before the covariance sum, see
+                    // KartVisualGeometryMath.ComputeBestFitPlaneNormal's own
+                    // doc comment) makes this computation fully
+                    // deterministic given the same input geometry, but
+                    // deterministic is not the same as CORRECT: nothing
+                    // before this round ever logged what normal/orientation
+                    // this actually computes, so there is no hard evidence
+                    // yet of whether the disc's fitted plane itself is
+                    // right, or whether the sign/twist picked here is
+                    // wrong every time (which would look "still crooked"
+                    // even though it's no longer flipping between
+                    // launches). Logging every value that feeds the final
+                    // rotation so the next test run's logcat can actually
+                    // be compared against what "correct" should look like,
+                    // instead of guessing again.
+                    Debug.Log("KartPhysicsPrototypeBootstrap: steering-wheel pivot orientation -- " +
+                        $"pivot='{pivotName}', meshPointCount={meshPoints.Count}, " +
+                        $"fittedNormal={normal.ToString("F4")}, visualRoot.forward={visualRoot.forward.ToString("F4")}, " +
+                        $"visualRoot.up={visualRoot.up.ToString("F4")}, resultEuler={pivotObject.transform.eulerAngles.ToString("F2")}.");
+                }
+            }
+
             foreach (var part in parts)
             {
                 part.SetParent(pivotObject.transform, true);
             }
 
             return pivotObject.transform;
+        }
+
+        /// <summary>
+        /// Round 43: gathers every vertex of <paramref name="parts"/>'
+        /// meshes in WORLD space (i.e. after each part's own instantiated
+        /// transform is applied) -- the raw input KartVisualGeometryMath
+        /// needs to fit a real plane through the modeled geometry.
+        /// </summary>
+        private static List<Vector3> CollectWorldVertices(List<Transform> parts)
+        {
+            var points = new List<Vector3>();
+            foreach (var part in parts)
+            {
+                var meshFilter = part.GetComponent<MeshFilter>();
+                var mesh = meshFilter != null ? meshFilter.sharedMesh : null;
+                // Round 43: mesh.vertices throws/logs an error on a mesh
+                // imported with "Read/Write Enabled" off (isReadable
+                // false) -- skip such meshes instead of letting that
+                // error surface, so a model reimported without that
+                // setting degrades to the old (visualRoot.rotation)
+                // pivot orientation instead of spamming errors or, worse,
+                // crashing the whole visual rebuild.
+                if (mesh == null || !mesh.isReadable)
+                {
+                    continue;
+                }
+
+                var vertices = mesh.vertices;
+                var localToWorld = part.localToWorldMatrix;
+                for (var i = 0; i < vertices.Length; i++)
+                {
+                    points.Add(localToWorld.MultiplyPoint3x4(vertices[i]));
+                }
+            }
+
+            return points;
         }
 
         /// <summary>
