@@ -249,8 +249,10 @@ gantt
 | Revenue sharing | Modelo de compartilhamento de receita a definir |
 
 **Restrições:**
-- **NUNCA** usar nome, logo, fotografia, imagem de satélite, pintura, publicidade ou réplica exata de pista real sem autorização formal.
-- MVP usa exclusivamente pista fictícia.
+- **NUNCA** distribuir externamente ou divulgar comercialmente nome, logo, fotografia, imagem de satélite, pintura, publicidade ou réplica exata de pista real sem autorização formal.
+- Referências temporárias aprovadas pelo fundador podem existir somente no repositório privado e em builds internos, com proveniência e bloqueio de distribuição registrados conforme `AGENTS.md` e `docs/32-asset-provenance-and-lfs.md`.
+- Antes de Alpha externo, TestFlight/Google Play para terceiros, marketing ou loja, toda referência não licenciada deve ser removida, ficcionalizada ou formalmente licenciada.
+- O conteúdo distribuído no MVP usa exclusivamente pista fictícia, salvo parceria/licença aprovada e documentada.
 
 **Estimativa preliminar (Base):**
 

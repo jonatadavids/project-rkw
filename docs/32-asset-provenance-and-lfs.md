@@ -27,6 +27,7 @@ O histórico já publicado não será reescrito automaticamente. Portanto:
 | RacingKart/KartV2 e peças associadas | `Assets/RKW/Physics/Resources/KartPhysics/Models/` | Arquivos fornecidos pelo fundador durante as rodadas de prototipagem | Autoria/licença ainda precisa de confirmação documental; não liberar externamente como asset reutilizável |
 | Ícones e texturas procedurais RKW | `Assets/RKW/Physics/Resources/KartPhysics/Textures/` e código gerador | Produção interna/procedural do protótipo | Uso interno permitido; registrar autoria final antes do release |
 | Áudio sintético de validação | `Assets/RKW/Audio/` | Síntese procedural própria, sem conteúdo externo | Não é áudio final; manter identificação como material técnico |
+| TechnicalCircuit2 / “Carrera Kart” | `Assets/RKW/Track/Resources/Track/TechnicalCircuit2Configuration.asset` e código de construção associado | Geometria aproximada extraída de fotografia pública do antigo Circuito Marco/Carrera Kart e autorizada pelo fundador em 2026-09-02 somente para prototipagem privada | Sem comprovação de licença. Permitida apenas no repositório privado e em builds internos; bloquear Alpha externo, distribuição a terceiros, marketing e lojas até remover o nome e ficcionalizar o traçado ou obter autorização formal |
 
 ## Regras para novos assets
 
@@ -40,6 +41,8 @@ Antes de adicionar um asset, registrar:
 6. restrições de redistribuição, atribuição, marca ou uso comercial.
 
 Assets sem essas informações podem ser usados apenas como material local de avaliação e não devem entrar em builds distribuídos externamente.
+
+O registro de uma referência real nesta tabela não concede licença. A autorização interna do fundador serve somente para desenvolvimento privado e não substitui autorização do titular dos direitos.
 
 ## Verificação da US-003
 

@@ -60,11 +60,14 @@ Este documento define regras duráveis que qualquer agente de IA (Codex, Kiro, G
 - Se uma mudança ultrapassa o budget (draw calls, triângulos, memória, frame time), **otimizar antes de submeter**.
 - Incluir profiling screenshot se mudança afeta performance.
 
-### 10. Sem Marcas/Assets sem Licença
+### 10. Marcas, Pistas Reais e Assets sem Licença
 
-- **NUNCA** usar nomes, logos, traçados de pistas ou pinturas de marcas reais sem licença.
-- **NUNCA** incluir assets de terceiros sem verificar licença (verificar asset store license, CC license, etc.).
-- Pistas devem ser fictícias no MVP.
+- **NUNCA** distribuir externamente, divulgar comercialmente ou publicar em lojas nomes, logos, fotografias, pinturas, publicidade ou réplicas de pistas reais sem licença/autorização formal.
+- Em repositório privado e builds estritamente internos de desenvolvimento, o fundador pode autorizar por escrito o uso temporário de nome e geometria de uma pista real como referência técnica de prototipagem.
+- Toda exceção interna deve registrar origem, ausência de licença e bloqueio de distribuição. Ela não concede direitos, não transforma o material em asset definitivo e deve ser removida, ficcionalizada ou licenciada antes de Alpha externo, TestFlight/Google Play para terceiros, marketing, demonstração pública ou publicação em loja.
+- Fotografias, logos, anúncios e materiais originais de terceiros não entram no jogo ou no Git apenas porque o traçado de referência foi autorizado internamente.
+- **NUNCA** incluir outros assets de terceiros sem verificar licença (Asset Store, CC ou equivalente).
+- As pistas distribuídas no MVP permanecem fictícias, salvo parceria/licença aprovada e documentada.
 
 ### 11. Sem Pay-to-Win
 
